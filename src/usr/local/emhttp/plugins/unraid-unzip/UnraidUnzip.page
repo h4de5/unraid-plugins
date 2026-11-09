@@ -1,0 +1,142 @@
+Menu="Settings:50"
+Title="Unraid Unzip"
+Icon="file-archive-o"
+---
+<?php
+$uuzPluginDir = ($docroot ?? '/usr/local/emhttp') . '/plugins/unraid-unzip';
+require_once $uuzPluginDir . '/include/lib.php';
+$cfg = uuz_cfg();
+$excludes = uuz_read_list(uuz_exclude_file(), true);
+$passwords = uuz_read_list(uuz_password_file());
+$token = (string) ($var['csrf_token'] ?? '');
+?>
+<link rel="stylesheet" href="/plugins/unraid-unzip/css/unraid-unzip.css">
+<div class="unraid-unzip-about">
+  <p>unraid-unzip adds archive extraction to the File Manager: right-click any
+  <code>.zip</code>, <code>.7z</code>, <code>.rar</code>, <code>.tar.gz</code>, <code>.gz</code>, <code>.xz</code>, <code>.bz2</code>,
+  <code>.zst</code> or <code>.iso</code> file and choose <b>Extract here</b> or <b>Extract to...</b>.
+  Extraction runs as a background job with progress display, password support and overwrite policies.</p>
+</div>
+<form id="unraid-unzip-settings" class="unraid-unzip-settings" method="post" autocomplete="off">
+<input type="hidden" name="csrf_token" value="<?=uuz_h($token)?>">
+
+<div class="title"><span class="left"><i class="fa fa-sliders title"></i>Extraction</span></div>
+<p>Behaviour used by the <b>Extract to...</b> dialog and by <b>Extract here</b>.</p>
+<div class="unraid-unzip-row">
+  <label for="uuz_DEFAULT_OVERWRITE">Default overwrite policy</label>
+  <select id="uuz_DEFAULT_OVERWRITE" name="DEFAULT_OVERWRITE" style="max-width:420px">
+    <?php foreach (['ask' => 'Ask per file (default)', 'overwrite' => 'Overwrite existing', 'skip' => 'Skip existing', 'rename_existing' => 'Rename existing', 'rename_new' => 'Rename new'] as $value => $label): ?>
+    <option value="<?=uuz_h($value)?>" <?=$cfg['DEFAULT_OVERWRITE'] === $value ? 'selected' : ''?>><?=uuz_h($label)?></option>
+    <?php endforeach; ?>
+  </select>
+  <p class="unraid-unzip-hint">What to do when a file from the archive already exists in the target directory. Can be changed per job in the dialog.</p>
+</div>
+
+<div class="title"><span class="left"><i class="fa fa-key title"></i>Passwords</span></div>
+<p>One password per line, shown as entered. Stored in <code>/boot/config/plugins/unraid-unzip/passwords.txt</code>
+with mode 0600. Every saved password is tried automatically for encrypted archives, in this order.</p>
+<textarea name="passwords" rows="5" spellcheck="false" placeholder="One password per line" style="width:100%;max-width:520px"><?=uuz_h(implode("\n", $passwords))?></textarea>
+<p class="unraid-unzip-hint">Delete a line to remove a password, save to clear the list.</p>
+
+<div class="title"><span class="left"><i class="fa fa-ban title"></i>Excludes</span></div>
+<p>One glob per line, comments start with <code>#</code>. Excluded entries are never extracted.
+Can be extended per job in the dialog.</p>
+<textarea name="excludes" rows="4" spellcheck="false" placeholder="*.tmp&#10;__MACOSX/*" style="width:100%;max-width:520px"><?=uuz_h(implode("\n", $excludes))?></textarea>
+
+<div class="title" id="uuz_advanced_head" onclick="uuzToggleAdvanced(this)" role="button" tabindex="0"><span class="left"><i class="fa fa-cog title"></i>Advanced settings <small>| rarely used - click to open</small></span><span class="right"><i class="fa fa-angle-down"></i></span></div>
+<div id="uuz_advanced" style="display:none">
+  <div class="unraid-unzip-row">
+    <label for="uuz_STRIP_ROOT">Root folder</label>
+    <select id="uuz_STRIP_ROOT" name="STRIP_ROOT" style="max-width:420px">
+      <?php foreach (['auto' => 'Automatic (default)', 'always' => 'Always strip', 'never' => 'Never strip'] as $value => $label): ?>
+      <option value="<?=uuz_h($value)?>" <?=$cfg['STRIP_ROOT'] === $value ? 'selected' : ''?>><?=uuz_h($label)?></option>
+      <?php endforeach; ?>
+    </select>
+    <p class="unraid-unzip-hint">Many archives contain everything in one top-level folder (e.g. <code>backup/2026-01-01/...</code>).
+    <b>Automatic</b> strips that folder only when every entry sits inside a single top-level folder; <b>Always</b> removes the first path component of every entry;
+    <b>Never</b> keeps the structure exactly as stored in the archive.</p>
+  </div>
+  <div class="unraid-unzip-row">
+    <span>Safety</span>
+    <label><input type="checkbox" name="PRESERVE_SYMLINKS" value="yes" <?=$cfg['PRESERVE_SYMLINKS'] === 'yes' ? 'checked' : ''?>> Preserve symbolic links</label>
+    <label><input type="checkbox" name="WARN_SUSPICIOUS_PATHS" value="yes" <?=$cfg['WARN_SUSPICIOUS_PATHS'] === 'yes' ? 'checked' : ''?>> Warn about suspicious paths</label>
+    <p class="unraid-unzip-hint"><b>Preserve symlinks</b> recreates links from the archive as links.
+    <b>Warn about suspicious paths</b> blocks extraction and asks for confirmation when an entry points outside the target directory (e.g. <code>../</code>, absolute paths) or is a symlink into system directories.</p>
+  </div>
+  <div class="unraid-unzip-row">
+    <span>Notifications</span>
+    <label><input type="checkbox" name="NOTIFY_ON_COMPLETE" value="no" <?=$cfg['NOTIFY_ON_COMPLETE'] === 'no' ? 'checked' : ''?>> Suppress notifications</label>
+    <p class="unraid-unzip-hint">Finished jobs are announced in the unRAID notification centre by default. Check the box to suppress that.</p>
+  </div>
+  <div class="unraid-unzip-row">
+    <span>Limits</span>
+    <label>Max concurrent jobs <input type="number" name="MAX_JOBS" min="1" max="8" value="<?=uuz_h($cfg['MAX_JOBS'])?>" style="width:70px;display:inline-block"></label>
+    <label>History entries <input type="number" name="HISTORY_LIMIT" min="1" max="10000" value="<?=uuz_h($cfg['HISTORY_LIMIT'])?>" style="width:90px;display:inline-block"></label>
+    <label>Keep job logs (minutes) <input type="number" name="LOG_RETENTION_MIN" min="0" max="10080" value="<?=uuz_h($cfg['LOG_RETENTION_MIN'])?>" style="width:80px;display:inline-block"></label>
+  </div>
+  <div class="unraid-unzip-row">
+    <span>Binaries</span>
+    <label>7-Zip binary <input type="text" name="SEVENZIP_PATH" value="<?=uuz_h($cfg['SEVENZIP_PATH'])?>" style="width:220px;display:inline-block"></label>
+    <label>unrar binary <input type="text" name="UNRAR_PATH" value="<?=uuz_h($cfg['UNRAR_PATH'])?>" placeholder="/usr/bin/unrar" style="width:220px;display:inline-block"></label>
+    <p class="unraid-unzip-hint">The plugin installs <code>7zzs</code> 26.05 under <code>/usr/bin</code> on every boot. Override only if you know what you are doing.</p>
+  </div>
+</div>
+
+<div class="unraid-unzip-actions">
+  <button type="submit" class="unraid-unzip-primary">Apply</button>
+  <button type="button" onclick="location.href='/Settings'">Done</button>
+  <span id="unraid-unzip-status" class="unraid-unzip-status" role="status"></span>
+</div>
+</form>
+<script>
+function uuzToggleAdvanced(head) {
+  var body = document.getElementById('uuz_advanced');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  head.querySelector('.right i').className = open ? 'fa fa-angle-down' : 'fa fa-angle-up';
+}
+document.getElementById('uuz_advanced_head').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); uuzToggleAdvanced(this); }
+});
+(function () {
+  var form = document.getElementById('unraid-unzip-settings');
+  var status = document.getElementById('unraid-unzip-status');
+  if (!form || !status) return;
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    status.textContent = 'Saving...';
+    var data = new FormData(form);
+    var payload = new URLSearchParams();
+    payload.set('action', 'save');
+    payload.set('csrf_token', data.get('csrf_token') || '');
+    // booleans: only send the key when checked (unchecked = "no")
+    var booleans = { 'PRESERVE_SYMLINKS': false, 'WARN_SUSPICIOUS_PATHS': false, 'NOTIFY_ON_COMPLETE': false };
+    form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      if (cb.name in booleans) booleans[cb.name] = cb.checked;
+    });
+    data.forEach(function (value, key) {
+      if (key === 'csrf_token' || key === '#file') return;
+      if (typeof value !== 'string') return;
+      payload.append(key, value);
+    });
+    payload.set('PRESERVE_SYMLINKS', booleans.PRESERVE_SYMLINKS ? 'yes' : 'no');
+    payload.set('WARN_SUSPICIOUS_PATHS', booleans.WARN_SUSPICIOUS_PATHS ? 'yes' : 'no');
+    payload.set('NOTIFY_ON_COMPLETE', booleans.NOTIFY_ON_COMPLETE ? 'no' : 'yes');
+    fetch('/plugins/unraid-unzip/include/api.php', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: payload
+    }).then(function (response) {
+      return response.json();
+    }).then(function (result) {
+      if (!result.ok) throw new Error(result.error && result.error.message ? result.error.message : 'Could not save settings');
+      status.textContent = 'Saved.';
+      setTimeout(function () { location.reload(); }, 400);
+    }).catch(function (error) {
+      status.textContent = 'Error: ' + error.message;
+    });
+  });
+})();
+</script>

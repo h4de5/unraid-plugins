@@ -1,0 +1,3 @@
+unraid-unzip: unraid-unzip
+unraid-unzip: Archive extraction for the unRAID File Manager (7z, zip, RAR, tar.gz, bz2, xz).
+unraid-unzip:

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Show toolchain
+        run: |
+          set -x
+          bash --version | head -n1
+          php -v | head -n1
+          node -v
+          python3 --version
+          tar --version | head -n1
+
+      - name: Lint (bash -n, node --check, php -l)
+        run: |
+          SRC=src/usr/local/emhttp/plugins/unraid-unzip
+          bash -n bin/build.sh
+          bash -n bin/generate-pages.sh
+          bash -n "$SRC/scripts/job-runner.sh"
+          bash -n "$SRC/scripts/merge-tree.sh"
+          bash -n "$SRC/scripts/normalize-excludes.sh"
+          node --check "$SRC/js/unraid-unzip.js"
+          php -l "$SRC/include/api.php"
+          php -l "$SRC/include/lib.php"
+          php -l "$SRC/scripts/job-helper.php"
+
+      - name: Tests (merge-tree + exclude normalisation)
+        run: |
+          bash tests/run-tests.sh
+          bash tests/test-exclude-normalization.sh
+
+      - name: Build (deterministic .txz)
+        run: bash bin/build.sh --version 0.0.0-ci-test --out-dir /tmp/uuz-ci
+
+      - name: Build determinism (two builds, identical SHA256)
+        run: |
+          bash bin/build.sh --version 0.0.0-ci-test --out-dir /tmp/uuz-ci-a >/dev/null 2>&1
+          bash bin/build.sh --version 0.0.0-ci-test --out-dir /tmp/uuz-ci-b >/dev/null 2>&1
+          A=$(sha256sum /tmp/uuz-ci-a/unraid-unzip-0.0.0-ci-test-noarch-1.txz | awk '{print $1}')
+          B=$(sha256sum /tmp/uuz-ci-b/unraid-unzip-0.0.0-ci-test-noarch-1.txz | awk '{print $1}')
+          echo "a=$A"; echo "b=$B"
+          test "$A" = "$B"
+
+      - name: Verify 7-Zip pin (checksum)
+        run: bash tests/verify-7z-checksum.sh
+
+      - name: Verify generate-pages.sh (no repo writes)
+        run: |
+          # Run into a scratch dir so the test does not modify the working tree.
+          set -euo pipefail
+          T=/tmp/uuz-pages-check
+          rm -rf "$T"
+          bash bin/generate-pages.sh \
+            --version 9.9.9-pages-check \
+            --sha256 1111111111111111111111111111111111111111111111111111111111111111 \
+            --out "$T"
+          echo "--- generated .plg (head) ---"
+          sed -n '1,15p' "$T/unraid-unzip.plg"
+          test -f "$T/index.html"
+          grep -q 'version="9.9.9-pages-check"' "$T/unraid-unzip.plg"
+          grep -q '1111111111111111111111111111111111111111111111111111111111111111' "$T/unraid-unzip.plg"
+          grep -q 'https://h4de5.github.io/unraid-unzip/unraid-unzip.plg' "$T/unraid-unzip.plg"
+          echo "generate-pages.sh OK"

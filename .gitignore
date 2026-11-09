@@ -1,0 +1,30 @@
+# Secrets (unRAID access, tokens) - never commit
+secrets.env
+
+# Local-only host deploy script (uses the docker socket + secrets.env)
+bin/deploy.sh
+
+# Build output (deterministic .txz / 7z download) - built on demand
+packages/
+
+# Generated artifacts (pages, dist) - produced by bin/generate-pages.sh and the
+# CI pipeline; never committed (the pipeline pushes pages/ to the gh-pages branch)
+pages/
+dist/
+
+# Internal documentation (design notes, issue analysis, local test setups)
+/docs-internal/
+docs/*-local.md
+
+# Machine-local bootstrap (idempotent, run after container update)
+.workspace-setup/
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo
+
+# Python / node noise from local tooling
+__pycache__/
+*.pyc
+node_modules/

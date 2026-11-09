@@ -1,0 +1,17 @@
+Menu="Buttons:9"
+Link="nav-user"
+---
+<?
+$uuzCfg = parse_plugin_cfg('unraid-unzip');
+?>
+<?if ($myPage['name'] == 'Browse'):?>
+<script>
+window.unraidUnzip = {
+  csrf: <?=json_encode($var['csrf_token'] ?? '')?>,
+  api: '/plugins/unraid-unzip/include/api.php',
+  defaultOverwrite: <?=json_encode($uuzCfg['DEFAULT_OVERWRITE'] ?? 'ask')?>
+};
+</script>
+<script src="<?=autov('/plugins/unraid-unzip/js/unraid-unzip.js')?>"></script>
+<link rel="stylesheet" href="<?=autov('/plugins/unraid-unzip/css/unraid-unzip.css')?>">
+<?endif;?>
