@@ -24,7 +24,7 @@ https://h4de5.github.io/unraid-unzip/unraid-unzip.plg
 The package binary itself is a GitHub Release asset (versioned, immutable):
 
 ```
-https://github.com/h4de5/unraid-unzip/releases/download/<version>/<pkg>
+https://github.com/h4de5/unraid-unzip/releases/download/v<version>/<pkg>
 ```
 
 ## Release flow
