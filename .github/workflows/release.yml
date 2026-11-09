@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (defaults to the topmost CHANGELOG.md entry)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -26,10 +32,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Derive version from tag
+      - name: Derive version
         id: ver
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$(python3 -c 'import re; t=open("CHANGELOG.md").read(); m=re.search(r"(?m)^### (\S+)", t); print(m.group(1))')"
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing $VERSION"
 
@@ -92,10 +104,21 @@ jobs:
           echo "release body:"; cat body.md
         shell: bash
 
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG_NAME="$GITHUB_REF_NAME"
+          else
+            TAG_NAME="v${{ steps.ver.outputs.version }}"
+          fi
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag: $TAG_NAME"
+
       - name: Publish GitHub Release (.txz)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.tag_name }}
           name: unraid-unzip ${{ steps.ver.outputs.version }}
           body_path: body.md
           files: |
