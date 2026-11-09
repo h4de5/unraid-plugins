@@ -6,6 +6,9 @@ the file/folder context menus and extracts archives to a chosen destination.
 Built on [7-Zip](https://www.7-zip.org/) (`7zzs`) — the binary is downloaded and
 SHA256-verified at install time; it is **not** bundled in the package.
 
+Project page: [https://h4de5.github.io/unraid-unzip/](https://h4de5.github.io/unraid-unzip/)
+(changelog + install URL).
+
 ## Disclaimer
 
 This repository was **vibe-coded**: I have not looked at the source code, and you
@@ -14,6 +17,16 @@ experience writing unRAID plugins. **Use it at your own risk.**
 
 This plugin was built to cover my own use-case. No further use-cases are
 currently planned.
+
+The architecture, plugin manifest format, File Manager injection technique, and
+7-Zip integration in this project are based on work and documentation by
+contributors to the unRAID community — in particular the
+[zip_manager](https://github.com/jcofer555/zip_manager) plugin, the
+[unRAID webgui](https://github.com/unraid/webgui) source,
+[plugin-docs](https://github.com/mstrhakr/plugin-docs), and
+[folder.view3](https://github.com/chodeus/folder.view3).
+Those projects solved the same problems years before this repo existed; the
+credit for the underlying patterns is entirely theirs.
 
 ## Supported input formats
 
