@@ -8,7 +8,7 @@ bin/deploy.sh
 packages/
 
 # Generated artifacts (pages, dist) - produced by bin/generate-pages.sh and the
-# CI pipeline; never committed (the pipeline pushes pages/ to the gh-pages branch)
+# CI pipeline; never committed (the pipeline uploads pages/ as a Pages artifact)
 pages/
 dist/
 
