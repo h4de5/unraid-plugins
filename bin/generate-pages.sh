@@ -210,21 +210,34 @@ page = f"""<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{esc(repo)} &mdash; archive extraction for unRAID</title>
   <style>
-    :root {{ color-scheme: light dark; }}
+    :root {{
+      color-scheme: light dark;
+      --bg: #ffffff; --fg: #1f2328; --muted: #656d76;
+      --link: #0969da; --btn-bg: #0969da; --btn-fg: #fff;
+      --code-bg: #f6f8fa; --code-border: #d0d7de;
+    }}
+    @media (prefers-color-scheme: dark) {{
+      :root {{
+        --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e;
+        --link: #4493f8; --btn-bg: #1f6feb; --btn-fg: #fff;
+        --code-bg: #161b22; --code-border: #30363d;
+      }}
+    }}
     body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-           line-height: 1.55; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.25rem; }}
+           line-height: 1.55; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.25rem;
+           background: var(--bg); color: var(--fg); }}
     h1 {{ font-size: 1.6rem; margin-bottom: .25rem; }}
     h2 {{ font-size: 1.05rem; margin: 1.5rem 0 .35rem; font-variant-numeric: tabular-nums; }}
-    .sub {{ color: #666; margin-top: 0; }}
-    a {{ color: #2f6feb; text-decoration: none; }}
+    .sub {{ color: var(--muted); margin-top: 0; }}
+    a {{ color: var(--link); text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
     code {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }}
     ul {{ margin: .35rem 0 0; padding-left: 1.25rem; }}
     .btn {{ display: inline-block; padding: .5rem .9rem; border-radius: 6px;
-           background: #2f6feb; color: #fff; font-weight: 600; }}
-    .install {{ background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+           background: var(--btn-bg); color: var(--btn-fg); font-weight: 600; }}
+    .install {{ background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px;
                padding: .75rem 1rem; overflow-x: auto; }}
-    footer {{ margin-top: 2rem; color: #666; font-size: .9rem; }}
+    footer {{ margin-top: 2rem; color: var(--muted); font-size: .9rem; }}
   </style>
 </head>
 <body>
