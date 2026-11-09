@@ -15,7 +15,7 @@
 #     --version 2026.11.08.03 \
 #     --sha256 <sha of the built .txz> \
 #     --plugin-url https://h4de5.github.io/unraid-unzip/unraid-unzip.plg \
-#     [--pkg-url   https://github.com/h4de5/unraid-unzip/releases/download/<v>/<pkg>] \
+#     [--pkg-url   https://github.com/h4de5/unraid-unzip/releases/download/v<v>/<pkg>] \
 #     [--changelog CHANGELOG.md] \
 #     [--out pages]
 #
@@ -56,7 +56,7 @@ done
 
 PKG_NAME="${REPO_NAME}-${VERSION}-noarch-1.txz"
 PLUGIN_URL="${PLUGIN_URL:-${PAGES_URL}/unraid-unzip.plg}"
-PKG_URL="${PKG_URL:-https://github.com/${OWNER}/${REPO_NAME}/releases/download/${VERSION}/${PKG_NAME}}"
+PKG_URL="${PKG_URL:-https://github.com/${OWNER}/${REPO_NAME}/releases/download/v${VERSION}/${PKG_NAME}}"
 CHANGELOG="${CHANGELOG:-$REPO/CHANGELOG.md}"
 OUT="${OUT:-$REPO/pages}"
 [[ -f "$CHANGELOG" ]] || { echo "changelog not found: $CHANGELOG" >&2; exit 2; }
