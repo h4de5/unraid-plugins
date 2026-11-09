@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Derive version from tag
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Lint
+        run: |
+          SRC=src/usr/local/emhttp/plugins/unraid-unzip
+          bash -n bin/build.sh
+          bash -n bin/generate-pages.sh
+          bash -n "$SRC/scripts/job-runner.sh"
+          bash -n "$SRC/scripts/merge-tree.sh"
+          bash -n "$SRC/scripts/normalize-excludes.sh"
+          node --check "$SRC/js/unraid-unzip.js"
+          php -l "$SRC/include/api.php"
+          php -l "$SRC/include/lib.php"
+          php -l "$SRC/scripts/job-helper.php"
+
+      - name: Tests
+        run: |
+          bash tests/run-tests.sh
+          bash tests/test-exclude-normalization.sh
+          bash tests/verify-7z-checksum.sh
+
+      - name: Build package
+        id: build
+        run: |
+          bash bin/build.sh --version "${{ steps.ver.outputs.version }}" --out-dir dist
+          BUILT_SHA="$(sha256sum "dist/unraid-unzip-${{ steps.ver.outputs.version }}-noarch-1.txz" | awk '{print $1}')"
+          echo "sha=$BUILT_SHA" >> "$GITHUB_OUTPUT"
+          echo "built sha: $BUILT_SHA"
+
+      - name: Sanity-check generated .plg (matches the build)
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          SHA="${{ steps.build.outputs.sha }}"
+          bash bin/generate-pages.sh --version "$VERSION" --sha256 "$SHA" --out /tmp/uuz-check
+          PKG="unraid-unzip-${VERSION}-noarch-1.txz"
+          grep -q "unraid-unzip-${VERSION}-noarch-1.txz" /tmp/uuz-check/unraid-unzip.plg
+          grep -q "<SHA256>${SHA}</SHA256>" /tmp/uuz-check/unraid-unzip.plg
+          grep -q 'https://h4de5.github.io/unraid-unzip/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
+          echo "generated .plg is consistent with the build"
+
+      - name: Release body (changelog for this version)
+        id: body
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          BODY="$(python3 - "$VERSION" <<'PY'
+          import re, sys
+          version = sys.argv[1]
+          text = open("CHANGELOG.md").read()
+          m = re.search(r'(?m)^### ' + re.escape(version) + r'\s*$(.*?)(?=^### |\Z)', text, re.S | re.M)
+          if not m:
+              sys.exit(f"no changelog entry for {version} (add one to CHANGELOG.md before tagging)")
+          body = "### " + version + "\n" + m.group(1).strip()
+          print(body.strip())
+          PY
+          )"
+          printf '%s\n' "$BODY" > body.md
+          echo "release body:"; cat body.md
+        shell: bash
+
+      - name: Publish GitHub Release (.txz)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: unraid-unzip ${{ steps.ver.outputs.version }}
+          body_path: body.md
+          files: |
+            dist/unraid-unzip-${{ steps.ver.outputs.version }}-noarch-1.txz
+          draft: false
+          prerelease: false
+
+      - name: Generate pages (manifest + landing)
+        run: |
+          bash bin/generate-pages.sh \
+            --version "${{ steps.ver.outputs.version }}" \
+            --sha256 "${{ steps.build.outputs.sha }}" \
+            --out pages
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+  deploy:
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
