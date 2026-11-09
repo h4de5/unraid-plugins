@@ -1,0 +1,120 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN>
+
+<PLUGIN
+  name="unraid-unzip"
+  author="h4de5"
+  version="2026.11.08.03"
+  launch="Settings/UnraidUnzip"
+  pluginURL="https://h4de5.github.io/unraid-unzip/unraid-unzip.plg"
+  support="https://github.com/h4de5/unraid-unzip"
+  min="7.0.0"
+  icon="file-archive-o"
+>
+
+<CHANGES>
+<![CDATA[
+### 2026.11.08.03
+
+- Refactor exclude-pattern normalisation into a testable, unit-tested helper (same behaviour as 0.02).
+
+### 2026.11.08.02
+
+- Fix: excludes match at any archive depth; pre-fill target dir in extract dialog; shorten plugin description; prune empty staging dirs after extraction.
+
+### 2026.11.08.01
+
+- Settings restructured (descriptions, Advanced accordion); saved exclude list now always applied to extractions; saved passwords always tried; notifications on by default (suppressable); mobile-friendly dialog; plugin description for the plugin list.
+
+### 2026.11.07.05
+
+- Installation now replaces a single plugin slot instead of creating one per version; legacy slots are cleaned up.
+
+### 2026.11.07.04
+
+- Password list is now a plain editable textbox, shown and saved like the exclude list; removed the keep/clear mechanism.
+
+### 2026.11.07.03
+
+- Settings save rewritten: single API call, no /update.htm; password + exclude lists persisted directly.
+
+### 2026.11.07.02
+
+- Fixed settings save (relative API URL returned the HTML error page).
+
+### 2026.11.07.01
+
+- Dark-theme aware settings page and dialogs.
+- Fixed settings page (eval'd plugin dir resolution).
+- Removed the create-archive feature (extraction only).
+
+### 2026.11.06.01
+
+- Initial implementation.
+]]>
+</CHANGES>
+
+<FILE Name="/boot/config/plugins/unraid-unzip/unraid-unzip-2026.11.08.03-noarch-1.txz">
+<URL>https://github.com/h4de5/unraid-unzip/releases/download/2026.11.08.03/unraid-unzip-2026.11.08.03-noarch-1.txz</URL>
+<SHA256>24e497aecaf9ba0da6168f9640f7551fcd73996e911577ec183977e9f25d3443</SHA256>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+set -e
+install_dir="/boot/config/plugins/unraid-unzip"
+mkdir -p "$install_dir"
+chmod 755 "$install_dir"
+
+# --- 7-Zip runtime dependency (verified, single-use) -------------------------
+sevenzip_file="7z2605-linux-x64.tar.xz"
+sevenzip_sha="22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e"
+sevenzip_url="https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz"
+if [[ ! -x /usr/bin/7zzs || "$(sha256sum /usr/bin/7zzs 2>/dev/null | awk '{print $1}')" != "$sevenzip_sha" ]]; then
+  killall 7zzs >/dev/null 2>&1 || true
+  tmp="$(mktemp -d /tmp/unraid-unzip-7z.XXXXXX)"
+  curl -fsSL "$sevenzip_url" -o "$tmp/$sevenzip_file"
+  actual="$(sha256sum "$tmp/$sevenzip_file" | awk '{print $1}')"
+  if [[ "$actual" != "$sevenzip_sha" ]]; then
+    echo "unraid-unzip: 7-Zip checksum mismatch" >&2
+    rm -rf "$tmp"
+    exit 1
+  fi
+  tar -xOf "$tmp/$sevenzip_file" 7zzs > /usr/bin/7zzs
+  chmod 755 /usr/bin/7zzs
+  rm -rf "$tmp"
+fi
+# --- end 7-Zip dependency -----------------------------------------------------
+
+upgradepkg --install-new "$install_dir/unraid-unzip-2026.11.08.03-noarch-1.txz"
+
+# cleanup old package versions
+rm -f $(ls "$install_dir"/unraid-unzip-*.txz 2>/dev/null | grep -v "2026.11.08.03")
+
+echo ""
+echo "----------------------------------------------------"
+echo " unraid-unzip has been installed."
+echo " Version: 2026.11.08.03"
+echo "----------------------------------------------------"
+echo ""
+]]>
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+<![CDATA[
+removepkg unraid-unzip
+
+killall 7zzs >/dev/null 2>&1 || true
+rm -f /usr/bin/7zzs
+rm -rf /usr/local/emhttp/plugins/unraid-unzip
+
+# Keep user configuration and history on remove.
+echo "unraid-unzip removed; configuration kept in /boot/config/plugins/unraid-unzip"
+]]>
+</INLINE>
+</FILE>
+
+</PLUGIN>

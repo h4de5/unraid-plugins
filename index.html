@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>unraid-unzip &mdash; archive extraction for unRAID</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+           line-height: 1.55; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.25rem; }
+    h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+    h2 { font-size: 1.05rem; margin: 1.5rem 0 .35rem; font-variant-numeric: tabular-nums; }
+    .sub { color: #666; margin-top: 0; }
+    a { color: #2f6feb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+    ul { margin: .35rem 0 0; padding-left: 1.25rem; }
+    .btn { display: inline-block; padding: .5rem .9rem; border-radius: 6px;
+           background: #2f6feb; color: #fff; font-weight: 600; }
+    .install { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+               padding: .75rem 1rem; overflow-x: auto; }
+    footer { margin-top: 2rem; color: #666; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>unraid-unzip</h1>
+  <p class="sub">Archive extraction for the unRAID File Manager.
+     <a href="https://github.com/h4de5/unraid-unzip">GitHub</a> &middot;
+     <a href="https://github.com/h4de5/unraid-unzip/blob/main/README.md">README</a></p>
+  <p>Current version: <strong>2026.11.08.03</strong></p>
+
+  <h2>Install</h2>
+  <p>Add this plugin URL in <strong>Settings &rarr; Plugins &rarr; Add/Remove</strong>:</p>
+  <div class="install"><code>https://h4de5.github.io/unraid-unzip/unraid-unzip.plg</code></div>
+  <p>Or download the package directly:
+     <a class="btn" href="https://github.com/h4de5/unraid-unzip/releases/download/2026.11.08.03/unraid-unzip-2026.11.08.03-noarch-1.txz">unraid-unzip-2026.11.08.03.txz</a></p>
+
+  <h2>Changelog</h2>
+  <section>
+    <h2>2026.11.08.03</h2>
+    <ul>
+      <li>Refactor exclude-pattern normalisation into a testable, unit-tested helper (same behaviour as 0.02).</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.08.02</h2>
+    <ul>
+      <li>Fix: excludes match at any archive depth; pre-fill target dir in extract dialog; shorten plugin description; prune empty staging dirs after extraction.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.08.01</h2>
+    <ul>
+      <li>Settings restructured (descriptions, Advanced accordion); saved exclude list now always applied to extractions; saved passwords always tried; notifications on by default (suppressable); mobile-friendly dialog; plugin description for the plugin list.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.07.05</h2>
+    <ul>
+      <li>Installation now replaces a single plugin slot instead of creating one per version; legacy slots are cleaned up.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.07.04</h2>
+    <ul>
+      <li>Password list is now a plain editable textbox, shown and saved like the exclude list; removed the keep/clear mechanism.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.07.03</h2>
+    <ul>
+      <li>Settings save rewritten: single API call, no /update.htm; password + exclude lists persisted directly.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.07.02</h2>
+    <ul>
+      <li>Fixed settings save (relative API URL returned the HTML error page).</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.07.01</h2>
+    <ul>
+      <li>Dark-theme aware settings page and dialogs.</li>
+      <li>Fixed settings page (eval&#x27;d plugin dir resolution).</li>
+      <li>Removed the create-archive feature (extraction only).</li>
+    </ul>
+  </section>
+  <section>
+    <h2>2026.11.06.01</h2>
+    <ul>
+      <li>Initial implementation.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p><em>Built for a single use-case. Use at your own risk. See the
+       <a href="https://github.com/h4de5/unraid-unzip/blob/main/README.md#disclaimer">disclaimer</a>.</em></p>
+  </footer>
+</body>
+</html>
