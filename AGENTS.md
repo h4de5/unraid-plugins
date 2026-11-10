@@ -5,7 +5,7 @@ unRAID archive-extraction plugin. Integrates with the built-in File Manager
 and provides a settings page for passwords, exclude patterns, overwrite behaviour
 and notifications.
 
-**Status:** implemented and published (current `2026.11.08.03`). Source lives in
+**Status:** implemented and published (current `2026.11.08.04`). Source lives in
 `src/`; the changelog in `CHANGELOG.md`; CI/Release workflows in
 `.github/workflows/`. Build and release tooling in `bin/`.
 
@@ -20,6 +20,35 @@ here as well. In particular:
 - Test against copies in `/tmp`, never against production data.
 - Never manipulate the git working tree unless the user explicitly asks for it.
 - All project documentation is written in English.
+- No em dashes (`—`) or en dashes (`–`) anywhere in the repo. Use a plain
+  hyphen-minus `-` only. This applies to prose, code, comments, and changelog.
+
+## Absolute rules - unRAID host (SSH root)
+
+The agent has SSH **root** access to the unRAID host (`192.168.0.6`). That access
+is **only ever used to install/upgrade/verify this plugin** and nothing else.
+
+1. **Only touch this plugin.** On the host, the only permitted writes are those
+   performed by `bin/deploy.sh`'s standard plugin install path: the `unraid-unzip`
+   package/slot under `/boot/config/plugins/unraid-unzip*`, the plugin files under
+   `/usr/local/emhttp/plugins/unraid-unzip`, and the 7-Zip binary the plugin
+   installs. No other file, directory, service, container, share, config, or
+   system setting on the host may be read-for-write, created, modified, removed,
+   or restarted.
+2. **The plugin install routine must behave like a well-behaved unRAID plugin.**
+   Its install/upgrade/remove scripts may only: install the package files, bundle
+   `7zzs` under `/usr/bin`, manage their own `/tmp/unraid-unzip/` state, and
+   register/remove their own menu/Buttons/OtherSettings pages and notification
+   hooks. They must **not** modify system packages, unRAID settings, docker or
+   other plugins, user data/shares, network, DNS, cron, autostart, or any host
+   state outside the plugin's own namespace.
+3. **No host experimentation.** Do not run ad-hoc host commands to "test", "check
+   state", or "fix" anything that is not part of the documented plugin
+   install/verify steps. Diagnostics on the host are read-only and limited to
+   confirming this plugin's installation (version, slot count, page present,
+   config dir intact).
+4. **If a task requires touching anything else on the host, stop and ask.**
+   The plugin boundary is the hard limit of what may be written on the box.
 
 ## Documentation
 
