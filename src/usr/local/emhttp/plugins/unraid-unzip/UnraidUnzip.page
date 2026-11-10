@@ -1,4 +1,4 @@
-Menu="Settings:50"
+Menu="OtherSettings:50"
 Title="Unraid Unzip"
 Icon="file-archive-o"
 ---
@@ -12,10 +12,9 @@ $token = (string) ($var['csrf_token'] ?? '');
 ?>
 <link rel="stylesheet" href="/plugins/unraid-unzip/css/unraid-unzip.css">
 <div class="unraid-unzip-about">
-  <p>unraid-unzip adds archive extraction to the File Manager: right-click any
-  <code>.zip</code>, <code>.7z</code>, <code>.rar</code>, <code>.tar.gz</code>, <code>.gz</code>, <code>.xz</code>, <code>.bz2</code>,
-  <code>.zst</code> or <code>.iso</code> file and choose <b>Extract here</b> or <b>Extract to...</b>.
-  Extraction runs as a background job with progress display, password support and overwrite policies.</p>
+  <p>unraid-unzip adds right-click archive extraction to the File Manager
+  (<code>.zip</code>, <code>.7z</code>, <code>.rar</code>, <code>.tar.gz</code>, <code>.iso</code> and more) with background jobs,
+  password support and overwrite policies.</p>
 </div>
 <form id="unraid-unzip-settings" class="unraid-unzip-settings" method="post" autocomplete="off">
 <input type="hidden" name="csrf_token" value="<?=uuz_h($token)?>">
