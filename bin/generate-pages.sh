@@ -14,8 +14,8 @@
 #   bin/generate-pages.sh \
 #     --version 2026.11.08.03 \
 #     --sha256 <sha of the built .txz> \
-#     --plugin-url https://h4de5.github.io/unraid-unzip/unraid-unzip.plg \
-#     [--pkg-url   https://github.com/h4de5/unraid-unzip/releases/download/v<v>/<pkg>] \
+#     --plugin-url https://h4de5.github.io/unraid-plugins/unraid-unzip.plg \
+#     [--pkg-url   https://github.com/h4de5/unraid-plugins/releases/download/v<v>/<pkg>] \
 #     [--changelog CHANGELOG.md] \
 #     [--out pages]
 #
@@ -35,7 +35,8 @@ SEVENZIP_URL="https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-
 readonly SEVENZIP_VERSION SEVENZIP_FILE SEVENZIP_SHA256 SEVENZIP_URL
 
 OWNER="h4de5"
-REPO_NAME="unraid-unzip"
+PLUGIN_NAME="unraid-unzip"     # unRAID plugin name: package slot, .plg file, emhttp dir
+REPO_NAME="unraid-plugins"     # GitHub repo: release assets, Pages base, landing links
 PAGES_URL="https://${OWNER}.github.io/${REPO_NAME}"
 
 VERSION="" SHA256="" PLUGIN_URL="" PKG_URL="" CHANGELOG="" OUT=""
@@ -54,7 +55,7 @@ done
 [[ -n "$VERSION" ]] || { echo "--version is required" >&2; exit 2; }
 [[ -n "$SHA256" ]]  || { echo "--sha256 is required" >&2; exit 2; }
 
-PKG_NAME="${REPO_NAME}-${VERSION}-noarch-1.txz"
+PKG_NAME="${PLUGIN_NAME}-${VERSION}-noarch-1.txz"
 PLUGIN_URL="${PLUGIN_URL:-${PAGES_URL}/unraid-unzip.plg}"
 PKG_URL="${PKG_URL:-https://github.com/${OWNER}/${REPO_NAME}/releases/download/v${VERSION}/${PKG_NAME}}"
 CHANGELOG="${CHANGELOG:-$REPO/CHANGELOG.md}"
@@ -62,18 +63,18 @@ OUT="${OUT:-$REPO/pages}"
 [[ -f "$CHANGELOG" ]] || { echo "changelog not found: $CHANGELOG" >&2; exit 2; }
 
 mkdir -p "$OUT"
-PLG="$OUT/${REPO_NAME}.plg"
+PLG="$OUT/${PLUGIN_NAME}.plg"
 HTML="$OUT/index.html"
 
 echo "==> Generate $PLG for $VERSION (pkg: $PKG_NAME)"
 python3 - "$PLG" "$VERSION" "$PKG_NAME" "$PKG_URL" "$SHA256" "$CHANGELOG" \
-  "$PLUGIN_URL" "$OWNER" "$REPO_NAME" \
+  "$PLUGIN_URL" "$OWNER" "$REPO_NAME" "$PLUGIN_NAME" \
   "$SEVENZIP_FILE" "$SEVENZIP_SHA256" "$SEVENZIP_URL" <<'PYEOF'
 import re, sys
 
 path, version, pkg, pkg_url, sha = sys.argv[1:6]
-changelog_path, plugin_url, owner, repo = sys.argv[6:10]
-sevenzip_file, sevenzip_sha, sevenzip_url = sys.argv[10:13]
+changelog_path, plugin_url, owner, repo, plugin = sys.argv[6:11]
+sevenzip_file, sevenzip_sha, sevenzip_url = sys.argv[11:14]
 
 raw = open(changelog_path).read()
 # Keep everything from the first "### " entry onward (drop a leading H1 / intro).
@@ -84,7 +85,7 @@ template = """<?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN>
 
 <PLUGIN
-  name="{repo}"
+  name="{plugin}"
   author="{owner}"
   version="{version}"
   launch="Settings/UnraidUnzip"
@@ -100,7 +101,7 @@ template = """<?xml version='1.0' standalone='yes'?>
 ]]>
 </CHANGES>
 
-<FILE Name="/boot/config/plugins/{repo}/{pkg}">
+<FILE Name="/boot/config/plugins/{plugin}/{pkg}">
 <URL>{pkg_url}</URL>
 <SHA256>{sha}</SHA256>
 </FILE>
@@ -109,7 +110,7 @@ template = """<?xml version='1.0' standalone='yes'?>
 <INLINE>
 <![CDATA[
 set -e
-install_dir="/boot/config/plugins/{repo}"
+install_dir="/boot/config/plugins/{plugin}"
 mkdir -p "$install_dir"
 chmod 755 "$install_dir"
 
@@ -119,11 +120,11 @@ sevenzip_sha="{sevenzip_sha}"
 sevenzip_url="{sevenzip_url}"
 if [[ ! -x /usr/bin/7zzs || "$(sha256sum /usr/bin/7zzs 2>/dev/null | awk '{{print $1}}')" != "$sevenzip_sha" ]]; then
   killall 7zzs >/dev/null 2>&1 || true
-  tmp="$(mktemp -d /tmp/{repo}-7z.XXXXXX)"
+  tmp="$(mktemp -d /tmp/{plugin}-7z.XXXXXX)"
   curl -fsSL "$sevenzip_url" -o "$tmp/$sevenzip_file"
   actual="$(sha256sum "$tmp/$sevenzip_file" | awk '{{print $1}}')"
   if [[ "$actual" != "$sevenzip_sha" ]]; then
-    echo "{repo}: 7-Zip checksum mismatch" >&2
+    echo "{plugin}: 7-Zip checksum mismatch" >&2
     rm -rf "$tmp"
     exit 1
   fi
@@ -136,11 +137,11 @@ fi
 upgradepkg --install-new "$install_dir/{pkg}"
 
 # cleanup old package versions
-rm -f $(ls "$install_dir"/{repo}-*.txz 2>/dev/null | grep -v "{version}")
+rm -f $(ls "$install_dir"/{plugin}-*.txz 2>/dev/null | grep -v "{version}")
 
 echo ""
 echo "----------------------------------------------------"
-echo " {repo} has been installed."
+echo " {plugin} has been installed."
 echo " Version: {version}"
 echo "----------------------------------------------------"
 echo ""
@@ -151,14 +152,14 @@ echo ""
 <FILE Run="/bin/bash" Method="remove">
 <INLINE>
 <![CDATA[
-removepkg {repo}
+removepkg {plugin}
 
 killall 7zzs >/dev/null 2>&1 || true
 rm -f /usr/bin/7zzs
-rm -rf /usr/local/emhttp/plugins/{repo}
+rm -rf /usr/local/emhttp/plugins/{plugin}
 
 # Keep user configuration and history on remove.
-echo "{repo} removed; configuration kept in /boot/config/plugins/{repo}"
+echo "{plugin} removed; configuration kept in /boot/config/plugins/{plugin}"
 ]]>
 </INLINE>
 </FILE>
@@ -167,20 +168,20 @@ echo "{repo} removed; configuration kept in /boot/config/plugins/{repo}"
 """
 
 out = template.format(
-    repo=repo, owner=owner, version=version, plugin_url=plugin_url,
-    pkg=pkg, pkg_url=pkg_url, sha=sha, changelog=changelog,
-    sevenzip_file=sevenzip_file, sevenzip_sha=sevenzip_sha,
-    sevenzip_url=sevenzip_url)
+    plugin=plugin, repo=repo, owner=owner, version=version,
+    plugin_url=plugin_url, pkg=pkg, pkg_url=pkg_url, sha=sha,
+    changelog=changelog, sevenzip_file=sevenzip_file,
+    sevenzip_sha=sevenzip_sha, sevenzip_url=sevenzip_url)
 open(path, "w").write(out)
 print("wrote:", path)
 PYEOF
 
 echo "==> Generate $HTML (landing page)"
 python3 - "$HTML" "$VERSION" "$PKG_URL" "$CHANGELOG" \
-  "$OWNER" "$REPO_NAME" "$PAGES_URL" <<'PYEOF'
+  "$OWNER" "$REPO_NAME" "$PAGES_URL" "$PLUGIN_NAME" <<'PYEOF'
 import html, re, sys
 
-path, version, pkg_url, changelog_path, owner, repo, pages = sys.argv[1:8]
+path, version, pkg_url, changelog_path, owner, repo, pages, plugin = sys.argv[1:9]
 
 raw = open(changelog_path).read()
 m = re.search(r'(?m)^### ', raw)
@@ -251,7 +252,7 @@ page = f"""<!DOCTYPE html>
   <p>Add this plugin URL in <strong>Settings &rarr; Plugins &rarr; Add/Remove</strong>:</p>
   <div class="install"><code>{esc(pages)}/unraid-unzip.plg</code></div>
   <p>Or download the package directly:
-     <a class="btn" href="{esc(pkg_url)}">{esc(repo)}-{esc(version)}.txz</a></p>
+     <a class="btn" href="{esc(pkg_url)}">{esc(plugin)}-{esc(version)}.txz</a></p>
 
   <h2>Changelog</h2>
 {changelog_html}

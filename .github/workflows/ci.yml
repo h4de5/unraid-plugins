@@ -80,5 +80,5 @@ jobs:
           test -f "$T/index.html"
           grep -q 'version="9.9.9-pages-check"' "$T/unraid-unzip.plg"
           grep -q '1111111111111111111111111111111111111111111111111111111111111111' "$T/unraid-unzip.plg"
-          grep -q 'https://h4de5.github.io/unraid-unzip/unraid-unzip.plg' "$T/unraid-unzip.plg"
+          grep -q 'https://h4de5.github.io/unraid-plugins/unraid-unzip.plg' "$T/unraid-unzip.plg"
           echo "generate-pages.sh OK"

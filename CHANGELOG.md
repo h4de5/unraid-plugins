@@ -4,6 +4,13 @@
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
+### 2026.11.10.01
+
+- Repo renamed `unraid-unzip` to `unraid-plugins`; the unRAID plugin / package name is unchanged (`unraid-unzip`).
+- Fix: the published `pluginURL` (and the Pages base) now point at the live `h4de5.github.io/unraid-plugins` base; the old `h4de5.github.io/unraid-unzip` base returned 404, which broke the on-box update check.
+- `generate-pages.sh`: split the unRAID plugin name from the GitHub repo name so the package slot, `.plg` file and emhttp dir stay `unraid-unzip` while release assets and Pages use the new repo name.
+- CA files (`ca_profile.xml`, `plugins/unraid-unzip.xml`), README, RELEASE.md, AGENTS.md and the CI/release URL checks now reference the canonical `unraid-plugins` repo.
+
 ### 2026.11.08.05
 
 - Add Community Applications submission files: `ca_profile.xml` (repo profile) and `plugins/unraid-unzip.xml` (plugin wrapper, category Tools:Utilities).

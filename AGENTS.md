@@ -1,13 +1,20 @@
-# unraid-unzip
+# unraid-plugins
 
-unRAID archive-extraction plugin. Integrates with the built-in File Manager
-(`/Shares/Browse?dir=...`), adds Extract actions to the file/folder context menus,
-and provides a settings page for passwords, exclude patterns, overwrite behaviour
-and notifications.
+Repository for unRAID plugins (one repo, several plugins, one release pipeline).
+The first plugin is **unraid-unzip**: an archive-extraction plugin that integrates
+with the built-in File Manager (`/Shares/Browse?dir=...`), adds Extract actions to
+the file/folder context menus, and provides a settings page for passwords, exclude
+patterns, overwrite behaviour and notifications.
 
-**Status:** implemented and published (current `2026.11.08.04`). Source lives in
+**Naming:** the unRAID plugin / package name is `unraid-unzip`; the GitHub repo
+and GitHub Pages base are `unraid-plugins` (renamed from `unraid-unzip`). The
+plugin name is what appears in the package slot, the `.plg` file, and the emhttp
+dir; the repo name is what appears in the release-asset and Pages URLs.
+
+**Status:** implemented and published (current `2026.11.08.05`). Source lives in
 `src/`; the changelog in `CHANGELOG.md`; CI/Release workflows in
-`.github/workflows/`. Build and release tooling in `bin/`.
+`.github/workflows/`. Build and release tooling in `bin/`. Community
+Applications files: `ca_profile.xml` + `plugins/unraid-unzip.xml`.
 
 ## Workspace rules
 
@@ -93,7 +100,7 @@ bin/deploy.sh        Local host deploy (gitignored; builds + installs on the box
 The `.plg` is a **build artifact**, not a tracked source file. `CHANGELOG.md` is
 the single source for the changelog (topmost `### <version>` entry = current
 release). The stable plugin URL is served from GitHub Pages:
-`https://h4de5.github.io/unraid-unzip/unraid-unzip.plg`.
+`https://h4de5.github.io/unraid-plugins/unraid-unzip.plg`.
 
 Release flow (tags are the unRAID version verbatim, e.g. `2026.11.08.03`):
 

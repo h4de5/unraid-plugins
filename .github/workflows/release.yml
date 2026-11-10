@@ -81,7 +81,7 @@ jobs:
           PKG="unraid-unzip-${VERSION}-noarch-1.txz"
           grep -q "unraid-unzip-${VERSION}-noarch-1.txz" /tmp/uuz-check/unraid-unzip.plg
           grep -q "<SHA256>${SHA}</SHA256>" /tmp/uuz-check/unraid-unzip.plg
-          grep -q 'https://h4de5.github.io/unraid-unzip/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
+          grep -q 'https://h4de5.github.io/unraid-plugins/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
           echo "generated .plg is consistent with the build"
 
       - name: Release body (changelog for this version)

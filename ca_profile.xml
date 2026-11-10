@@ -1,16 +1,21 @@
 <CommunityApplications>
   <Profile>
-unraid-unzip adds right-click archive extraction to the built-in unRAID File
-Manager: extract `7z`, `zip`, `RAR`, `tar`, and the compressed tarballs
-(`.tar.gz`, `.tgz`, `.tar.bz2`, `.tar.xz`, `.tar.zst`) to a destination you
-choose, with saved passwords, exclude patterns, an overwrite policy, and
-background jobs.
+unraid-plugins is a collection of unRAID plugins. Currently published:
+
+- unraid-unzip: right-click archive extraction for the built-in unRAID File
+  Manager. Extracts 7z, zip, RAR, tar, and the compressed tarballs
+  (.tar.gz, .tgz, .tar.bz2, .tar.xz, .tar.zst) to a destination you choose,
+  with saved passwords, exclude patterns, an overwrite policy, and background
+  jobs.
+
+More plugins may be added to this repository over time; each is listed in
+plugins/ and documented in the README.
 
 Maintained by h4de5. Report issues in the [GitHub issue
-tracker](https://github.com/h4de5/unraid-unzip/issues).
+tracker](https://github.com/h4de5/unraid-plugins/issues).
   </Profile>
-  <WebPage>https://github.com/h4de5/unraid-unzip</WebPage>
-  <Forum>https://github.com/h4de5/unraid-unzip/issues</Forum>
+  <WebPage>https://github.com/h4de5/unraid-plugins</WebPage>
+  <Forum>https://github.com/h4de5/unraid-plugins/issues</Forum>
   <DonateLink>https://ko-fi.com/h4de5</DonateLink>
   <DonateText>Support this project</DonateText>
 </CommunityApplications>

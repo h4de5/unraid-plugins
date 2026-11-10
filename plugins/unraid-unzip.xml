@@ -1,10 +1,10 @@
 <Plugin>
   <Name>unraid-unzip</Name>
   <Overview>Adds Extract actions to the unRAID File Manager. Extracts 7z, zip, RAR, tar and the compressed tarballs (tar.gz/tgz, tar.bz2, tar.xz, tar.zst) to a destination you choose, with saved passwords, exclude patterns, an overwrite policy and background jobs. Backend is 7-Zip (downloaded and checksum-verified at install).</Overview>
-  <PluginURL>https://h4de5.github.io/unraid-unzip/unraid-unzip.plg</PluginURL>
+  <PluginURL>https://h4de5.github.io/unraid-plugins/unraid-unzip.plg</PluginURL>
   <PluginAuthor>h4de5</PluginAuthor>
-  <Project>https://github.com/h4de5/unraid-unzip</Project>
-  <ReadMe>https://raw.githubusercontent.com/h4de5/unraid-unzip/main/README.md</ReadMe>
+  <Project>https://github.com/h4de5/unraid-plugins</Project>
+  <ReadMe>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/README.md</ReadMe>
   <Category>Tools:Utilities</Category>
   <Beta>true</Beta>
   <IconFA>file-archive-o</IconFA>
