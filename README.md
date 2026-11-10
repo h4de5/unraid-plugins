@@ -3,7 +3,7 @@
 Archive extraction for the unRAID File Manager. It adds **Extract** actions to
 the file/folder context menus and extracts archives to a chosen destination.
 
-Built on [7-Zip](https://www.7-zip.org/) (`7zzs`) — the binary is downloaded and
+Built on [7-Zip](https://www.7-zip.org/) (`7zzs`) - the binary is downloaded and
 SHA256-verified at install time; it is **not** bundled in the package.
 
 Project page: [https://h4de5.github.io/unraid-unzip/](https://h4de5.github.io/unraid-unzip/)
@@ -20,7 +20,7 @@ currently planned.
 
 The architecture, plugin manifest format, File Manager injection technique, and
 7-Zip integration in this project are based on work and documentation by
-contributors to the unRAID community — in particular the
+contributors to the unRAID community - in particular the
 [zip_manager](https://github.com/jcofer555/zip_manager) plugin, the
 [unRAID webgui](https://github.com/unraid/webgui) source,
 [plugin-docs](https://github.com/mstrhakr/plugin-docs), and
@@ -33,7 +33,7 @@ credit for the underlying patterns is entirely theirs.
 Extract (read) support:
 
 - 7z, zip
-- RAR / RAR5 (extraction only — RAR creation is out of scope for licensing)
+- RAR / RAR5 (extraction only - RAR creation is out of scope for licensing)
 - tar, tar.gz / tgz, tar.bz2 / tbz, tar.xz / txz, tar.zst (compressed tarballs
   are handled with a two-stage 7-Zip pipeline)
 
@@ -44,7 +44,7 @@ shown if none match.
 
 - **Context-menu actions** on archive files in the File Manager (`/Browse`).
 - **Destination + overwrite policy** per extraction (overwrite / skip / rename).
-- **Exclude patterns** (e.g. `node_modules`, `*.log`) — matched at any archive
+- **Exclude patterns** (e.g. `node_modules`, `*.log`) - matched at any archive
   depth.
 - **Job model**: extractions run in the background; active state and logs live in
   `/tmp/unraid-unzip/` so the USB flash drive is never written during jobs.
@@ -62,7 +62,7 @@ shown if none match.
 
 1. Add the plugin URL in **Settings → Plugins → Add/Remove**:
    `https://h4de5.github.io/unraid-unzip/unraid-unzip.plg`
-   (a stable URL — always the latest released version, with a verified
+   (a stable URL - always the latest released version, with a verified
    checksum). Or download the `.txz` from the
    [Releases](https://github.com/h4de5/unraid-unzip/releases) page.
 2. Install (the `.plg` auto-downloads the package + the pinned 7-Zip runtime,
@@ -94,7 +94,7 @@ tests/   bash unit tests (merge-tree, exclude normalisation) + 7-Zip checksum
 packages/ local build output (gitignored)
 ```
 
-Build a package locally (deterministic — local and CI builds hash identically):
+Build a package locally (deterministic - local and CI builds hash identically):
 
 ```sh
 bin/build.sh --version 2026.11.08.03 --out-dir packages
@@ -117,7 +117,7 @@ bash tests/verify-7z-checksum.sh
 ## Releases
 
 Tags are the unRAID version verbatim (e.g. `2026.11.08.03`). Add the release
-note as a `### <version>` entry in `CHANGELOG.md`, push, then tag — pushing the
+note as a `### <version>` entry in `CHANGELOG.md`, push, then tag - pushing the
 tag builds the `.txz`, publishes it as a GitHub Release asset, generates the
 install manifest from that build's checksum, and deploys the manifest + landing
 page to the stable URL. Nothing about the manifest is committed by hand.
@@ -127,4 +127,4 @@ The stable plugin URL (always the latest release) is
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
