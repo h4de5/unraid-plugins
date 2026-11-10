@@ -4,6 +4,12 @@
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
+### 2026.11.08.05
+
+- Add Community Applications submission files: `ca_profile.xml` (repo profile) and `plugins/unraid-unzip.xml` (plugin wrapper, category Tools:Utilities).
+- `.plg` support link now points to the GitHub issue tracker instead of the repo root.
+- Repo-wide style: em/en dashes replaced with plain hyphens; rule added to `AGENTS.md`.
+
 ### 2026.11.08.04
 
 - Fix: settings page no longer inlined on /Settings overview (Menu moved from `Settings` to `OtherSettings`).
