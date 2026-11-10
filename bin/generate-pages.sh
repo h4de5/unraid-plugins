@@ -89,7 +89,7 @@ template = """<?xml version='1.0' standalone='yes'?>
   version="{version}"
   launch="Settings/UnraidUnzip"
   pluginURL="{plugin_url}"
-  support="https://github.com/{owner}/{repo}"
+  support="https://github.com/{owner}/{repo}/issues"
   min="7.0.0"
   icon="file-archive-o"
 >
