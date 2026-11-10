@@ -7,7 +7,7 @@
 #
 # The .plg is a pure build artifact: it is generated AFTER the .txz is built and
 # (for GitHub) after the Release exists, and then published to a static URL.
-# This script does NOT touch git — the CI deploy action pushes the output dir to
+# This script does NOT touch git - the CI deploy action pushes the output dir to
 # the pages branch.
 #
 # Usage:
@@ -27,7 +27,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # 7-Zip runtime dependency (installed + verified by the .plg, pinned here).
-# Single source of truth for the pin — do not duplicate elsewhere.
+# Single source of truth for the pin - do not duplicate elsewhere.
 SEVENZIP_VERSION="26.05"
 SEVENZIP_FILE="7z2605-linux-x64.tar.xz"
 SEVENZIP_SHA256="22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e"
