@@ -1,6 +1,6 @@
 # Changelog
 
-`unraid-unzip` — archive extraction for the unRAID File Manager.
+`unraid-unzip` - archive extraction for the unRAID File Manager.
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
