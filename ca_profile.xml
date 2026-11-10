@@ -1,0 +1,16 @@
+<CommunityApplications>
+  <Profile>
+unraid-unzip adds right-click archive extraction to the built-in unRAID File
+Manager: extract `7z`, `zip`, `RAR`, `tar`, and the compressed tarballs
+(`.tar.gz`, `.tgz`, `.tar.bz2`, `.tar.xz`, `.tar.zst`) to a destination you
+choose, with saved passwords, exclude patterns, an overwrite policy, and
+background jobs.
+
+Maintained by h4de5. Report issues in the [GitHub issue
+tracker](https://github.com/h4de5/unraid-unzip/issues).
+  </Profile>
+  <WebPage>https://github.com/h4de5/unraid-unzip</WebPage>
+  <Forum>https://github.com/h4de5/unraid-unzip/issues</Forum>
+  <DonateLink>https://ko-fi.com/h4de5</DonateLink>
+  <DonateText>Support this project</DonateText>
+</CommunityApplications>
