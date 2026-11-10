@@ -4,6 +4,11 @@
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
+### 2026.11.08.04
+
+- Fix: settings page no longer inlined on /Settings overview (Menu moved from `Settings` to `OtherSettings`).
+- Shorten the about paragraph on the settings page.
+
 ### 2026.11.08.03
 
 - Refactor exclude-pattern normalisation into a testable, unit-tested helper (same behaviour as 0.02).
