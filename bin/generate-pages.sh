@@ -250,9 +250,9 @@ page = f"""<!DOCTYPE html>
 
   <h2>Install</h2>
   <p>Add this plugin URL in <strong>Settings &rarr; Plugins &rarr; Add/Remove</strong>:</p>
-  <div class="install"><code>{esc(pages)}/unraid-unzip.plg</code></div>
-  <p>Or download the package directly:
-     <a class="btn" href="{esc(pkg_url)}">{esc(plugin)}-{esc(version)}.txz</a></p>
+   <div class="install"><code>{esc(pages)}/unraid-unzip.plg</code></div>
+   <p>Or download the package directly:
+      <a class="btn" href="{esc(pkg_url)}">{esc(plugin)}-{esc(version)}.txz</a></p>
 
   <h2>Changelog</h2>
 {changelog_html}
