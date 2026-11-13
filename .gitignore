@@ -8,7 +8,10 @@ bin/deploy.sh
 packages/
 
 # Generated artifacts (pages, dist) - produced by bin/generate-pages.sh and the
-# CI pipeline; never committed (the pipeline uploads pages/ as a Pages artifact)
+# CI pipeline; never committed (the pipeline uploads pages/ as a Pages artifact).
+# NOTE: the canonical install manifest at the REPO ROOT (unraid-unzip.plg) is a
+# tracked source file - the release pipeline regenerates it and commits it to
+# main so the stable raw URL always resolves to the latest release.
 pages/
 dist/
 
