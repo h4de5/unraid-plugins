@@ -61,7 +61,7 @@ shown if none match.
 ### Installation
 
 1. Add the plugin URL in **Settings → Plugins → Add/Remove**:
-   `https://h4de5.github.io/unraid-plugins/unraid-unzip.plg`
+   `https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg`
    (a stable URL - always the latest released version, with a verified
    checksum). Or download the `.txz` from the
    [Releases](https://github.com/h4de5/unraid-plugins/releases) page. Or install
@@ -123,12 +123,14 @@ bash tests/verify-7z-checksum.sh
 
 Tags are the unRAID version verbatim (e.g. `2026.11.08.03`). Add the release
 note as a `### <version>` entry in `CHANGELOG.md`, push, then tag - pushing the
-tag builds the `.txz`, publishes it as a GitHub Release asset, generates the
-install manifest from that build's checksum, and deploys the manifest + landing
-page to the stable URL. Nothing about the manifest is committed by hand.
+tag builds the `.txz`, publishes it as a GitHub Release asset, and regenerates
+the install manifest from that build's checksum. The manifest
+(`unraid-unzip.plg`, tracked at the repo root) is then committed back to `main`
+by the pipeline, so the stable URL always resolves to the latest release. You
+never hand-edit it.
 
 The stable plugin URL (always the latest release) is
-`https://h4de5.github.io/unraid-plugins/unraid-unzip.plg`.
+`https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg`.
 
 ## Disclaimer
 
