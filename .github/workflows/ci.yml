@@ -80,5 +80,12 @@ jobs:
           test -f "$T/index.html"
           grep -q 'version="9.9.9-pages-check"' "$T/unraid-unzip.plg"
           grep -q '1111111111111111111111111111111111111111111111111111111111111111' "$T/unraid-unzip.plg"
-          grep -q 'https://h4de5.github.io/unraid-plugins/unraid-unzip.plg' "$T/unraid-unzip.plg"
+          grep -q 'https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg' "$T/unraid-unzip.plg"
           echo "generate-pages.sh OK"
+
+      - name: Verify committed root manifest (stable raw URL)
+        run: |
+          set -euo pipefail
+          test -f unraid-unzip.plg
+          grep -q 'pluginURL="https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg"' unraid-unzip.plg
+          echo "committed root manifest uses the stable raw URL"
