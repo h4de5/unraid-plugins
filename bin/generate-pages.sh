@@ -2,25 +2,26 @@
 # Generate the published artifacts from CHANGELOG.md + a finished build:
 #
 #   <out>/unraid-unzip.plg   the unRAID install manifest (pluginURL points at the
-#                            place this file will be served from)
+#                            stable raw URL, which is also the committed root manifest)
 #   <out>/index.html         a small landing page with the changelog
 #
-# The .plg is a pure build artifact: it is generated AFTER the .txz is built and
-# (for GitHub) after the Release exists, and then published to a static URL.
-# This script does NOT touch git - the CI deploy action pushes the output dir to
-# the pages branch.
+# The .plg is generated AFTER the .txz is built and (for GitHub) after the
+# Release exists. The canonical copy lives at the REPO ROOT (unraid-unzip.plg,
+# tracked in git); the release pipeline regenerates it from the build's SHA and
+# commits it to main so the raw URL always resolves to the latest release. This
+# script does NOT touch git - it only writes to the --out dir.
 #
 # Usage:
 #   bin/generate-pages.sh \
 #     --version 2026.11.08.03 \
 #     --sha256 <sha of the built .txz> \
-#     --plugin-url https://h4de5.github.io/unraid-plugins/unraid-unzip.plg \
+#     [--plugin-url https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg] \
 #     [--pkg-url   https://github.com/h4de5/unraid-plugins/releases/download/v<v>/<pkg>] \
 #     [--changelog CHANGELOG.md] \
 #     [--out pages]
 #
 #   --pkg-url defaults to the GitHub Release asset for --version.
-#   --plugin-url defaults to the GitHub Pages URL.
+#   --plugin-url defaults to the stable raw URL (raw.githubusercontent.com/.../main/unraid-unzip.plg).
 
 set -euo pipefail
 
@@ -56,7 +57,7 @@ done
 [[ -n "$SHA256" ]]  || { echo "--sha256 is required" >&2; exit 2; }
 
 PKG_NAME="${PLUGIN_NAME}-${VERSION}-noarch-1.txz"
-PLUGIN_URL="${PLUGIN_URL:-${PAGES_URL}/unraid-unzip.plg}"
+PLUGIN_URL="${PLUGIN_URL:-https://raw.githubusercontent.com/${OWNER}/${REPO_NAME}/main/unraid-unzip.plg}"
 PKG_URL="${PKG_URL:-https://github.com/${OWNER}/${REPO_NAME}/releases/download/v${VERSION}/${PKG_NAME}}"
 CHANGELOG="${CHANGELOG:-$REPO/CHANGELOG.md}"
 OUT="${OUT:-$REPO/pages}"
@@ -250,7 +251,7 @@ page = f"""<!DOCTYPE html>
 
   <h2>Install</h2>
   <p>Add this plugin URL in <strong>Settings &rarr; Plugins &rarr; Add/Remove</strong>:</p>
-   <div class="install"><code>{esc(pages)}/unraid-unzip.plg</code></div>
+    <div class="install"><code>https://raw.githubusercontent.com/{esc(owner)}/{esc(repo)}/main/unraid-unzip.plg</code></div>
    <p>Or download the package directly:
       <a class="btn" href="{esc(pkg_url)}">{esc(plugin)}-{esc(version)}.txz</a></p>
 
