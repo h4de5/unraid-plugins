@@ -116,8 +116,8 @@
     var html = ''
       + '<h3>' + (isHere ? 'Extract here' : 'Extract to...') + '</h3>'
       + '<div class="unraid-unzip-form">'
-      + '<label>Archive</label><div class="unraid-unzip-readonly">' + archive + '</div>'
-       + '<label>Target directory</label><input type="text" id="uuz_extract_target" value="' + dir + '" placeholder="' + dir + '">'
+      + '<label>Archive</label><div class="unraid-unzip-readonly">' + escapeHtml(archive) + '</div>'
+       + '<label>Target directory</label><input type="text" id="uuz_extract_target" value="' + escapeHtml(dir) + '" placeholder="' + escapeHtml(dir) + '">'
       + '<label>Password</label><input type="password" id="uuz_extract_password" autocomplete="off" placeholder="(blank: try saved passwords)">'
       + '<label>Overwrite policy</label><select id="uuz_extract_overwrite">'
       + '<option value="ask">Ask per file (default)</option>'
@@ -181,7 +181,7 @@
         $('#uuz_error', $keepOverlay).text('A password is required. Enter it and try again.').show();
         $('#uuz_extract_password', $keepOverlay).focus();
       } else {
-        overlay('<h3>Password required</h3><p>' + msg + '</p><div class="unraid-unzip-buttons"><button class="unraid-unzip-primary" id="uuz_close">Close</button></div>')
+        overlay('<h3>Password required</h3><p>' + escapeHtml(msg) + '</p><div class="unraid-unzip-buttons"><button class="unraid-unzip-primary" id="uuz_close">Close</button></div>')
           .find('#uuz_close').on('click', function (e) { closeOverlay($(e.target).closest('.unraid-unzip-overlay')); });
       }
       return;
@@ -194,7 +194,7 @@
     if ($keepOverlay) {
       $('#uuz_error', $keepOverlay).text(msg).show();
     } else {
-      overlay('<h3>Could not start</h3><p>' + msg + '</p><div class="unraid-unzip-buttons"><button class="unraid-unzip-primary" id="uuz_close">Close</button></div>')
+      overlay('<h3>Could not start</h3><p>' + escapeHtml(msg) + '</p><div class="unraid-unzip-buttons"><button class="unraid-unzip-primary" id="uuz_close">Close</button></div>')
         .find('#uuz_close').on('click', function (e) { closeOverlay($(e.target).closest('.unraid-unzip-overlay')); });
     }
   }
@@ -223,7 +223,7 @@
       $('#uuz_close', $o2).on('click', function () { closeOverlay($o2); });
     }).catch(function (err) {
       closeOverlay($o);
-      overlay('<h3>Could not list</h3><p>' + apiError(err) + '</p>');
+      overlay('<h3>Could not list</h3><p>' + escapeHtml(apiError(err)) + '</p>');
     });
   }
 

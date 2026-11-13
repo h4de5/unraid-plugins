@@ -27,7 +27,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# 7-Zip runtime dependency (installed + verified by the .plg, pinned here).
+# 7-Zip runtime dependency (a hashed <FILE> on the flash in the .plg, pinned here).
 # Single source of truth for the pin - do not duplicate elsewhere.
 SEVENZIP_VERSION="26.05"
 SEVENZIP_FILE="7z2605-linux-x64.tar.xz"
@@ -107,6 +107,12 @@ template = """<?xml version='1.0' standalone='yes'?>
 <SHA256>{sha}</SHA256>
 </FILE>
 
+<!-- 7-Zip runtime: kept on the flash so it is downloaded once, not at every boot -->
+<FILE Name="/boot/config/plugins/{plugin}/{sevenzip_file}">
+<URL>{sevenzip_url}</URL>
+<SHA256>{sevenzip_sha}</SHA256>
+</FILE>
+
 <FILE Run="/bin/bash">
 <INLINE>
 <![CDATA[
@@ -115,24 +121,27 @@ install_dir="/boot/config/plugins/{plugin}"
 mkdir -p "$install_dir"
 chmod 755 "$install_dir"
 
-# --- 7-Zip runtime dependency (verified, single-use) -------------------------
+# --- 7-Zip runtime dependency (verified, from the flash) ----------------------
+# The tarball is downloaded and SHA256-checked by the <FILE> element above.
 sevenzip_file="{sevenzip_file}"
 sevenzip_sha="{sevenzip_sha}"
-sevenzip_url="{sevenzip_url}"
+sevenzip_tar="$install_dir/$sevenzip_file"
 if [[ ! -x /usr/bin/7zzs || "$(sha256sum /usr/bin/7zzs 2>/dev/null | awk '{{print $1}}')" != "$sevenzip_sha" ]]; then
-  killall 7zzs >/dev/null 2>&1 || true
-  tmp="$(mktemp -d /tmp/{plugin}-7z.XXXXXX)"
-  curl -fsSL "$sevenzip_url" -o "$tmp/$sevenzip_file"
-  actual="$(sha256sum "$tmp/$sevenzip_file" | awk '{{print $1}}')"
-  if [[ "$actual" != "$sevenzip_sha" ]]; then
-    echo "{plugin}: 7-Zip checksum mismatch" >&2
-    rm -rf "$tmp"
+  if [[ ! -f "$sevenzip_tar" ]]; then
+    echo "{plugin}: 7-Zip tarball missing: $sevenzip_tar" >&2
     exit 1
   fi
-  tar -xOf "$tmp/$sevenzip_file" 7zzs > /usr/bin/7zzs
+  actual="$(sha256sum "$sevenzip_tar" | awk '{{print $1}}')"
+  if [[ "$actual" != "$sevenzip_sha" ]]; then
+    echo "{plugin}: 7-Zip checksum mismatch" >&2
+    exit 1
+  fi
+  killall 7zzs >/dev/null 2>&1 || true
+  tar -xOf "$sevenzip_tar" 7zzs > /usr/bin/7zzs
   chmod 755 /usr/bin/7zzs
-  rm -rf "$tmp"
 fi
+# drop 7-Zip tarballs left by an older pin
+rm -f $(ls "$install_dir"/7z*-linux-x64.tar.xz 2>/dev/null | grep -v "$sevenzip_file")
 # --- end 7-Zip dependency -----------------------------------------------------
 
 upgradepkg --install-new "$install_dir/{pkg}"
@@ -157,6 +166,7 @@ removepkg {plugin}
 
 killall 7zzs >/dev/null 2>&1 || true
 rm -f /usr/bin/7zzs
+rm -f "/boot/config/plugins/{plugin}/{sevenzip_file}"
 rm -rf /usr/local/emhttp/plugins/{plugin}
 
 # Keep user configuration and history on remove.

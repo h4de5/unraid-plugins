@@ -4,6 +4,11 @@
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
+### 2026.11.10.03
+
+- Security: escape the archive path and target directory with `escapeHtml()` in the extract dialog (`js/unraid-unzip.js`), closing an HTML-injection (XSS) vector from a crafted archive or directory name.
+- Reliability: the 7-Zip runtime is now declared as a SHA256-pinned `<FILE>` on the flash (`/boot/config/plugins/unraid-unzip/7z2605-linux-x64.tar.xz`) instead of being `curl`-downloaded to `/tmp` at every install/boot. The install script extracts it from the flash, so a cold boot with the network not yet up can no longer abort the install before `upgradepkg` runs. Matches the accepted pattern used by `zip_manager`.
+
 ### 2026.11.10.02
 
 - Community Applications compliance: `plugins/unraid-unzip.xml` rewritten to the approved schema (single `<Plugin>` root, `<Project>`, `<Support>` -> issue tracker, `<Icon>` -> raw image URL, `<MinVer>`/`<MaxVer>`, `Tools:Utilities`); the legacy `<IconFA>` and out-of-spec `<PluginAuthor>` fields are removed.
@@ -22,7 +27,7 @@ entry for the GitHub Release body and for the generated `.plg` / landing page.
 ### 2026.11.08.05
 
 - Add Community Applications submission files: `ca_profile.xml` (repo profile) and `plugins/unraid-unzip.xml` (plugin wrapper, category Tools:Utilities).
-- `.plg` support link now points to the GitHub issue tracker instead of the repo root.
+- `.plg` support link now points at the GitHub issue tracker instead of the repo root.
 - Repo-wide style: em/en dashes replaced with plain hyphens; rule added to `AGENTS.md`.
 
 ### 2026.11.08.04
