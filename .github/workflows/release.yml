@@ -81,7 +81,7 @@ jobs:
           PKG="unraid-unzip-${VERSION}-noarch-1.txz"
           grep -q "unraid-unzip-${VERSION}-noarch-1.txz" /tmp/uuz-check/unraid-unzip.plg
           grep -q "<SHA256>${SHA}</SHA256>" /tmp/uuz-check/unraid-unzip.plg
-          grep -q 'https://h4de5.github.io/unraid-plugins/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
+          grep -q 'https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
           echo "generated .plg is consistent with the build"
 
       - name: Release body (changelog for this version)
@@ -137,6 +137,37 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages
+
+      # The canonical install manifest lives at the REPO ROOT (unraid-unzip.plg,
+      # tracked in git) so the stable raw URL (raw.githubusercontent.com/.../main/
+      # unraid-unzip.plg) and the CA wrapper always resolve to the latest release.
+      # After the Release exists, regenerate it from this build's SHA and commit it
+      # to main. This is the pipeline updating its own manifest - not a hand commit.
+      - name: Commit updated root manifest to main
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          SHA="${{ steps.build.outputs.sha }}"
+          bash bin/generate-pages.sh \
+            --version "$VERSION" \
+            --sha256 "$SHA" \
+            --out /tmp/uuz-root
+          cp /tmp/uuz-root/unraid-unzip.plg new-plg.xml
+          T=/tmp/uuz-main
+          rm -rf "$T"
+          git clone --depth 1 --branch main https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$T"
+          cp new-plg.xml "$T/unraid-unzip.plg"
+          git -C "$T" config user.name  "github-actions[bot]"
+          git -C "$T" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git -C "$T" diff --quiet -- unraid-unzip.plg; then
+            git -C "$T" add unraid-unzip.plg
+            git -C "$T" commit -m "chore(release): bump root manifest to ${VERSION}"
+            git -C "$T" push
+            echo "root manifest on main bumped to ${VERSION}"
+          else
+            echo "root manifest on main already at ${VERSION}"
+          fi
+          rm -f new-plg.xml
 
   deploy:
     needs: release
