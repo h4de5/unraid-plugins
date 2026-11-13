@@ -4,6 +4,14 @@
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
+### 2026.11.10.02
+
+- Community Applications compliance: `plugins/unraid-unzip.xml` rewritten to the approved schema (single `<Plugin>` root, `<Project>`, `<Support>` -> issue tracker, `<Icon>` -> raw image URL, `<MinVer>`/`<MaxVer>`, `Tools:Utilities`); the legacy `<IconFA>` and out-of-spec `<PluginAuthor>` fields are removed.
+- The install manifest `unraid-unzip.plg` is now a **tracked source file at the repo root**; its `pluginURL` is the stable raw URL (`raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg`), which is what the CA wrapper points at.
+- `bin/generate-pages.sh`: the default `pluginURL` is the stable raw URL.
+- Release pipeline: after publishing a Release it regenerates the root manifest from that build's SHA and commits it to `main`, so the raw URL always resolves to the latest release. CI asserts the committed manifest uses the raw URL.
+- README / RELEASE.md / AGENTS.md updated to describe the raw-URL manifest as the canonical install source.
+
 ### 2026.11.10.01
 
 - Repo renamed `unraid-unzip` to `unraid-plugins`; the unRAID plugin / package name is unchanged (`unraid-unzip`).
