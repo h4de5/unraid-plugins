@@ -97,10 +97,14 @@ bin/generate-pages.sh Generate unraid-unzip.plg (install manifest) + index.html 
 bin/deploy.sh        Local host deploy (gitignored; builds + installs on the box, fileshare URLs)
 ```
 
-The `.plg` is a **build artifact**, not a tracked source file. `CHANGELOG.md` is
-the single source for the changelog (topmost `### <version>` entry = current
-release). The stable plugin URL is served from GitHub Pages:
-`https://h4de5.github.io/unraid-plugins/unraid-unzip.plg`.
+The install manifest `unraid-unzip.plg` is a **tracked source file at the repo
+root**. Its `pluginURL` is the stable raw URL
+(`https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg`)
+- that is the canonical install source and what the Community Applications
+wrapper points at. `CHANGELOG.md` is the single source for the changelog
+(topmost `### <version>` entry = current release). The release pipeline
+regenerates the root manifest from each build's SHA and commits it to `main`,
+so the raw URL always resolves to the latest release.
 
 Release flow (tags are the unRAID version verbatim, e.g. `2026.11.08.03`):
 
