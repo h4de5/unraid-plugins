@@ -152,22 +152,21 @@ jobs:
             --version "$VERSION" \
             --sha256 "$SHA" \
             --out /tmp/uuz-root
-          cp /tmp/uuz-root/unraid-unzip.plg new-plg.xml
-          T=/tmp/uuz-main
-          rm -rf "$T"
-          git clone --depth 1 --branch main https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$T"
-          cp new-plg.xml "$T/unraid-unzip.plg"
-          git -C "$T" config user.name  "github-actions[bot]"
-          git -C "$T" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git -C "$T" diff --quiet -- unraid-unzip.plg; then
-            git -C "$T" add unraid-unzip.plg
-            git -C "$T" commit -m "chore(release): bump root manifest to ${VERSION}"
-            git -C "$T" push
-            echo "root manifest on main bumped to ${VERSION}"
-          else
+          # Commit from the existing checkout: actions/checkout@v4 already wires a
+          # push token into git config (extraheader), so no second clone (and no
+          # GITHUB_TOKEN lookup) is needed. The tag sits on the tip of main, so
+          # pushing HEAD + commit to main is a fast-forward.
+          cp /tmp/uuz-root/unraid-unzip.plg unraid-unzip.plg
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- unraid-unzip.plg; then
             echo "root manifest on main already at ${VERSION}"
+          else
+            git add unraid-unzip.plg
+            git commit -m "chore(release): bump root manifest to ${VERSION}"
+            git push origin HEAD:main
+            echo "root manifest on main bumped to ${VERSION}"
           fi
-          rm -f new-plg.xml
 
   deploy:
     needs: release
