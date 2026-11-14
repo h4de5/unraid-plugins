@@ -154,17 +154,21 @@ jobs:
             --out /tmp/uuz-root
           # Commit from the existing checkout: actions/checkout@v4 already wires a
           # push token into git config (extraheader), so no second clone (and no
-          # GITHUB_TOKEN lookup) is needed. The tag sits on the tip of main, so
-          # pushing HEAD + commit to main is a fast-forward.
-          cp /tmp/uuz-root/unraid-unzip.plg unraid-unzip.plg
+          # GITHUB_TOKEN lookup) is needed.
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- unraid-unzip.plg; then
+          git fetch origin main
+          if git show "origin/main:unraid-unzip.plg" | cmp -s - /tmp/uuz-root/unraid-unzip.plg; then
             echo "root manifest on main already at ${VERSION}"
           else
+            cp /tmp/uuz-root/unraid-unzip.plg unraid-unzip.plg
             git add unraid-unzip.plg
             git commit -m "chore(release): bump root manifest to ${VERSION}"
-            git push origin HEAD:main
+            if ! git push origin HEAD:main; then
+              # main has advanced past the tag commit; rebase on it and retry
+              git pull --rebase origin main
+              git push origin HEAD:main
+            fi
             echo "root manifest on main bumped to ${VERSION}"
           fi
 
