@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <Plugin>
   <Name>unraid-unzip</Name>
+  <PluginAuthor>h4de5</PluginAuthor>
   <PluginURL>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg</PluginURL>
   <Project>https://github.com/h4de5/unraid-plugins</Project>
   <Support>https://github.com/h4de5/unraid-plugins/issues</Support>
