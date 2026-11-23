@@ -2,9 +2,20 @@
 body { margin:0; font-family:system-ui,sans-serif; background:#111; color:#eee; }
 header { padding:1rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
 h1 { margin:0; font-size:1.4rem; }
-#searchForm { display:flex; gap:.5rem; flex:1; }
+#searchForm { position:relative; display:flex; gap:.5rem; flex:1; align-items:flex-start; }
 #q { flex:1; padding:.6rem; border-radius:.4rem; border:1px solid #333; background:#222; color:#eee; }
 button { padding:.6rem 1rem; border:none; border-radius:.4rem; background:#2a7; color:#fff; cursor:pointer; }
+#searchForm button[type="submit"] { min-height:2.9rem; }
+#suggestions { position:absolute; top:100%; left:0; right:3.6rem; margin-top:.3rem; z-index:50; background:#1c1f24; border:1px solid #333; border-radius:.4rem; box-shadow:0 .6rem 1.5rem rgba(0,0,0,.55); overflow:hidden; }
+#suggestions .sug { min-height:44px; display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; font-size:1rem; color:#eee; cursor:pointer; user-select:none; touch-action:manipulation; }
+#suggestions .sug:hover, #suggestions .sug.active { background:#2a2f3a; }
+#suggestions .sug .sug-mark { color:#6a8; font-size:.85rem; flex:none; }
+#suggestions .sug b { font-weight:600; }
+@media (max-width:600px) {
+  #searchForm { flex:1 1 100%; }
+  #searchForm button[type="submit"] { min-height:44px; }
+  #suggestions .sug { font-size:1.05rem; }
+}
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.6rem; padding:1rem; }
 .card { display:flex; flex-direction:column; border-radius:.4rem; background:#222; overflow:hidden; }
 .card .title { padding:.4rem .5rem; font-size:.9rem; font-weight:600; line-height:1.2; }

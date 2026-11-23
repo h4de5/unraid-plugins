@@ -188,6 +188,26 @@ function hasVideoId(id) {
   return videoIds.has(String(id || '').toLowerCase());
 }
 
+// Input-box suggestions: local entries whose haystack words start with the
+// query (prefix match is enough here, unlike the strict word-boundary search).
+function suggest(query, limit) {
+  const q = String(query || '').toLowerCase().trim();
+  if (q.length < 2) return [];
+  const out = [];
+  for (const p of Object.keys(files)) {
+    const e = files[p];
+    const words = wordsOf(e);
+    for (const w of words) {
+      if (w.startsWith(q)) {
+        out.push(e.name);
+        break;
+      }
+    }
+  }
+  out.sort((a, b) => a.localeCompare(b));
+  return out.slice(0, limit || 5);
+}
+
 function resolveLocal(id) {
   const p = byId[id];
   return p && files[p] ? files[p] : null;
@@ -247,4 +267,4 @@ function extractCover(token) {
   return job;
 }
 
-module.exports = { init, searchLocal, hasVideoId, resolveLocal, addFile, count, extractCover };
+module.exports = { init, searchLocal, suggest, hasVideoId, resolveLocal, addFile, count, extractCover };

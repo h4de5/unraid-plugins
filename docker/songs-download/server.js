@@ -50,6 +50,46 @@ function runYtDlp(args) {
   });
 }
 
+// Search suggestions for the input box. Local (already downloaded) matches
+// come first, then YouTube's own query completions. Results are cached in
+// memory for 10 minutes.
+const SUGGEST_TTL_MS = 10 * 60 * 1000;
+const suggestCache = new Map();
+
+app.get('/suggest.php', async (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  if (q.length < 2) { res.json([]); return; }
+  const hit = suggestCache.get(q);
+  if (hit && hit.at + SUGGEST_TTL_MS > Date.now()) { res.json(hit.list); return; }
+  const local = localIndex.suggest(q, 5);
+  let yt = [];
+  try {
+    const r = await fetch(
+      'https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&ds=yt&q=' + encodeURIComponent(q),
+      { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(4000) }
+    );
+    const text = await r.text();
+    const m = text.match(/window\.google\.ac\.h\((.*)\)/);
+    if (m) {
+      const parsed = JSON.parse(m[1]);
+      if (Array.isArray(parsed) && Array.isArray(parsed[1])) {
+        yt = parsed[1].map((s) => (Array.isArray(s) ? s[0] : s)).filter((s) => typeof s === 'string');
+      }
+    }
+  } catch (e) { /* suggestion endpoint is optional */ }
+  const seen = {};
+  const list = [];
+  for (const s of local.concat(yt)) {
+    const k = String(s).toLowerCase();
+    if (!s || seen[k]) continue;
+    seen[k] = true;
+    list.push(s);
+    if (list.length >= 8) break;
+  }
+  suggestCache.set(q, { at: Date.now(), list });
+  res.json(list);
+});
+
 app.get('/search.php', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) { res.json([]); return; }

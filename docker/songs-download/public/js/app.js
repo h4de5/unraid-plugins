@@ -22,6 +22,108 @@ player.addEventListener('error', () => {
   nowPlaying.textContent = msg;
 });
 
+const qInput = document.getElementById('q');
+const sugBox = document.getElementById('suggestions');
+let sugList = [];
+let sugActive = -1;
+let sugTimer = null;
+let sugAbort = null;
+let sugPickBlock = false;
+
+function renderSuggestions() {
+  sugBox.innerHTML = '';
+  if (!sugList.length) { sugBox.hidden = true; return; }
+  sugList.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'sug' + (i === sugActive ? ' active' : '');
+    row.setAttribute('role', 'option');
+    const mark = document.createElement('span');
+    mark.className = 'sug-mark';
+    mark.textContent = '\u266A';
+    const text = document.createElement('span');
+    text.textContent = s;
+    row.appendChild(mark);
+    row.appendChild(text);
+    row.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      pickSuggestion(s);
+    });
+    row.addEventListener('mousemove', () => { setActive(i); });
+    sugBox.appendChild(row);
+  });
+  sugBox.hidden = false;
+}
+
+function setActive(i) {
+  sugActive = i;
+  sugBox.querySelectorAll('.sug').forEach((el, j) => el.classList.toggle('active', j === i));
+}
+
+function hideSuggestions() {
+  sugActive = -1;
+  sugBox.hidden = true;
+}
+
+function pickSuggestion(s) {
+  sugPickBlock = true;
+  qInput.value = s;
+  hideSuggestions();
+  qInput.focus();
+}
+
+function fetchSuggestions(q) {
+  if (sugAbort) sugAbort.abort();
+  sugAbort = new AbortController();
+  fetch('/suggest.php?q=' + encodeURIComponent(q), { signal: sugAbort.signal })
+    .then((r) => r.json())
+    .then((data) => {
+      const seen = {};
+      sugList = (Array.isArray(data) ? data : []).filter((s) => {
+        if (typeof s !== 'string' || !s.trim() || seen[s.toLowerCase()]) return false;
+        seen[s.toLowerCase()] = true;
+        return true;
+      }).slice(0, 8);
+      sugActive = sugList.length ? 0 : -1;
+      renderSuggestions();
+    })
+    .catch(() => {});
+}
+
+qInput.addEventListener('input', () => {
+  if (sugPickBlock) { sugPickBlock = false; return; }
+  clearTimeout(sugTimer);
+  const v = qInput.value.trim();
+  if (v.length < 2) { hideSuggestions(); return; }
+  sugTimer = setTimeout(() => fetchSuggestions(v), 200);
+});
+
+qInput.addEventListener('keydown', (e) => {
+  if (sugBox.hidden || !sugList.length) {
+    if (e.key === 'Escape') hideSuggestions();
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    setActive((sugActive + 1) % sugList.length);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    setActive((sugActive - 1 + sugList.length) % sugList.length);
+  } else if (e.key === 'Enter' && sugActive >= 0) {
+    e.preventDefault();
+    pickSuggestion(sugList[sugActive]);
+  } else if (e.key === 'Escape') {
+    hideSuggestions();
+  }
+});
+
+document.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#searchForm')) hideSuggestions();
+});
+
+qInput.addEventListener('blur', () => {
+  setTimeout(hideSuggestions, 150);
+});
+
 document.getElementById('searchForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const q = document.getElementById('q').value.trim();

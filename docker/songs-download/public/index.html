@@ -6,7 +6,7 @@
 <title>Songs Download</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#111111">
-<link rel="stylesheet" href="/css/style.css?v=8">
+  <link rel="stylesheet" href="/css/style.css?v=9">
 </head>
 <body>
 <header>
@@ -14,6 +14,7 @@
   <form id="searchForm">
     <input id="q" type="search" placeholder="Suche nach Musik..." autocomplete="off" required>
     <button type="submit">Suchen</button>
+    <div id="suggestions" hidden></div>
   </form>
   <div id="playerBox">
     <audio id="player" controls hidden></audio>
@@ -24,6 +25,6 @@
   <div id="results" class="grid"></div>
   <div id="status"></div>
 </main>
-<script src="/js/app.js?v=8"></script>
+  <script src="/js/app.js?v=9"></script>
 </body>
 </html>
