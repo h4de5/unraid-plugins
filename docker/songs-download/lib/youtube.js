@@ -1,29 +1,49 @@
-const NOISE_SUBS = [
-  'remix', 'live', 'official', 'video', 'audio', 'lyrics', 'karaoke',
-  'instrumental', 'version', 'edit', 'extended', 'radio', 'club', 'mix',
-  '4k', '8k', 'hdr', 'vevo',
-];
+// Noise that is marketing/technical for a music file name: "official"
+// phrases, video/audio/lyric tags, resolution tags (4K/HD/HDR), restore
+// tags, channel names. Version-distinguishing qualifiers (feat., remix,
+// live, acoustic, instrumental) are intentionally NOT in these lists, so
+// they survive in both the search result and the downloaded file name.
 
-const NOISE_WORDS = [
-  'remix', 'cover', 'official', 'audio', 'video', 'lyrics', 'karaoke',
-  'instrumental', 'live', 'version', 'edit', 'extended', 'radio', 'club', 'mix',
-  '4k', '8k', 'hdr', 'vevo',
-];
+// A parenthesised/bracketed group containing any of these markers is
+// dropped as a whole ("Official Music Video", "4K", "Lyrics", "Hi-Def").
+const GROUP_NOISE = /\b(official(?:ly)?|video|audio|lyrics?|music|only|4k|8k|hd|hdr|uhd|fhd|hls|vevo|restored|restoration|film|definition|colorized|colourized|hires|hi-?res|hi-?def|remaster(?:ed|ing)?|visualizer|visualisation|visualisierung|60fps|30fps|lossless)\b/i;
+
+// Unambiguous technical/marketing terms removed even free-standing.
+// Deliberately excludes standalone "video"/"audio"/"music"/"lyrics" so real
+// titles like "Video" or "Audio Adventures" are not gutted.
+const WORD_NOISE = new RegExp(
+  '\\b(' + [
+    'official(?:ly)?(?:\\s+(?:music|video|audio|song|theme|lyrics?))?(?:\\s+(?:video|audio|song|music|lyrics?))?',
+    '4k', '8k', 'uhd', 'fhd', 'hls', 'hd(?:r)?',
+    '60fps', '30fps',
+    'film\\s+restored',
+    'restored', 'restoration',
+    'hi(?:gh)?[-\\s]?def(?:inition)?',
+    'hi-?res(?:olution)?',
+    'high\\s+definition',
+    'visualizer', 'visualisation', 'visualisierung',
+    'colorized', 'colourized',
+    'remaster(?:ed|ing)?',
+    'lossless',
+    'vevo',
+  ].join('|') + ')\\b',
+  'gi'
+);
 
 function stripNoise(s) {
-  // Remove parenthesised/bracketed groups whose inner text contains a noise sub
+  // Drop bracketed groups that carry a technical marker, keep the rest.
   s = s.replace(/\[([^\]]*)\]|\(([^)]*)\)/g, (m, a, b) => {
-    const inner = (a !== undefined ? a : b).toLowerCase();
-    for (const n of NOISE_SUBS) {
-      if (inner.indexOf(n) !== -1) return ' ';
-    }
-    return m;
+    const inner = a !== undefined ? a : b;
+    return GROUP_NOISE.test(inner) ? ' ' : m;
   });
-  const words = NOISE_WORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  s = s.replace(new RegExp('(?<![A-Za-z])(' + words + ')(?![A-Za-z])', 'giu'), ' ');
+  s = s.replace(WORD_NOISE, ' ');
   s = s.replace(/\[\s*\]|\(\s*\)/g, ' ');
   s = s.replace(/\s+/g, ' ');
-  return s.trim();
+  s = s.trim();
+  // drop separators left dangling after a removal
+  s = s.replace(/\s*[-\u2013\u2014]+\s*$/, '').trim();
+  s = s.replace(/^\s*[-\u2013\u2014]+\s*/, '').trim();
+  return s;
 }
 
 function sanitizeName(s) {
