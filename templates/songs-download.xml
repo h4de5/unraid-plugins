@@ -1,0 +1,28 @@
+<Container version="2">
+  <Name>songs-download</Name>
+  <Repository>ghcr.io/h4de5/songs-download</Repository>
+  <Registry>https://ghcr.io/h4de5/songs-download</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Icon>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/docker/songs-download/icon.png</Icon>
+  <WebUI>http://[IP]:[PORT:8765]/</WebUI>
+  <Overview>YouTube music search, audio preview and download to a local music folder.</Overview>
+  <Project>https://github.com/h4de5/unraid-plugins</Project>
+  <Support>https://github.com/h4de5/unraid-plugins/issues</Support>
+  <TemplateURL>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/templates/songs-download.xml</TemplateURL>
+  <ReadMe>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/README.md</ReadMe>
+  <Category>MediaApp:Music</Category>
+  <ExtraSearchTerms>songs youtube download music audio</ExtraSearchTerms>
+  <Changes>Initial release</Changes>
+  <Date>2026-01-01</Date>
+  <MinVer>6.1</MinVer>
+  <MaxVer>7.3</MaxVer>
+  <License>MIT</License>
+  <Config Name="WebUI" Target="8765" Default="8765" Mode="tcp" Description="HTTP port for the WebUI." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="Downloads" Target="/downloads" Default="/mnt/user/media/music/Downloads" Mode="rw" Description="Music download folder. The app only adds files here; it never deletes." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="PUID" Target="PUID" Default="99" Description="User ID to run the container as." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PGID" Target="PGID" Default="100" Description="Group ID to run the container as." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="TZ" Target="TZ" Default="Europe/Berlin" Description="Timezone." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="StreamCacheTTL" Target="STREAM_CACHE_TTL_MIN" Default="60" Description="Minutes to keep streamed preview audio in /tmp." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

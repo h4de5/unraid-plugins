@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">unraid-unzip</title>
+  <desc id="desc">An archive folder with a zipper, representing archive extraction.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="52" fill="url(#bg)"/>
+  <path d="M48 92c0-8.8 7.2-16 16-16h44l16 18h68c8.8 0 16 7.2 16 16v14H48z" fill="#fbbf24"/>
+  <path d="M48 104c0-6.6 5.4-12 12-12h136c6.6 0 12 5.4 12 12v80c0 6.6-5.4 12-12 12H60c-6.6 0-12-5.4-12-12z" fill="url(#folder)"/>
+  <rect x="112" y="112" width="32" height="76" rx="4" fill="#1f2937"/>
+  <g fill="#e5e7eb">
+    <rect x="112" y="120" width="14" height="7" rx="2"/>
+    <rect x="130" y="127" width="14" height="7" rx="2"/>
+    <rect x="112" y="134" width="14" height="7" rx="2"/>
+    <rect x="130" y="141" width="14" height="7" rx="2"/>
+    <rect x="112" y="148" width="14" height="7" rx="2"/>
+    <rect x="130" y="155" width="14" height="7" rx="2"/>
+    <rect x="112" y="162" width="14" height="7" rx="2"/>
+    <rect x="130" y="169" width="14" height="7" rx="2"/>
+  </g>
+  <rect x="120" y="112" width="16" height="16" rx="4" fill="#f8fafc"/>
+  <path d="M128 128c0 9-7 16-16 16" fill="none" stroke="#f8fafc" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="110" cy="146" r="5" fill="#f8fafc"/>
+</svg>

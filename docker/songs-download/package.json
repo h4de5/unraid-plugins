@@ -1,0 +1,17 @@
+{
+  "name": "songs-download",
+  "version": "1.0.0",
+  "description": "YouTube music search, audio preview and download to a local music folder.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check lib/youtube.js && node --check lib/stream-cache.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "private": true
+}

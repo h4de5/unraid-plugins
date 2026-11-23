@@ -1,20 +1,25 @@
 # unraid-plugins
 
-Repository for unRAID plugins (one repo, several plugins, one release pipeline).
-The first plugin is **unraid-unzip**: an archive-extraction plugin that integrates
-with the built-in File Manager (`/Shares/Browse?dir=...`), adds Extract actions to
-the file/folder context menus, and provides a settings page for passwords, exclude
-patterns, overwrite behaviour and notifications.
+Repository for unRAID plugins and Docker apps (one repo, several entries, one
+release pipeline). The first plugin is **unraid-unzip**: an archive-extraction
+plugin that integrates with the built-in File Manager (`/Shares/Browse?dir=...`),
+adds Extract actions to the file/folder context menus, and provides a settings
+page for passwords, exclude patterns, overwrite behaviour and notifications.
+Docker apps ship as Community Applications templates in `templates/`:
+**songs-download** (YouTube music search, audio preview and download, source in
+`docker/songs-download/`) and **amazon-mcp** (a thin wrapper around the upstream
+`ghcr.io/jnslmk/amazon-mcp` image).
 
 **Naming:** the unRAID plugin / package name is `unraid-unzip`; the GitHub repo
 and GitHub Pages base are `unraid-plugins` (renamed from `unraid-unzip`). The
 plugin name is what appears in the package slot, the `.plg` file, and the emhttp
 dir; the repo name is what appears in the release-asset and Pages URLs.
 
-**Status:** implemented and published (current `2026.11.08.05`). Source lives in
+**Status:** implemented and published (current `2026.11.22.01`). Source lives in
 `src/`; the changelog in `CHANGELOG.md`; CI/Release workflows in
 `.github/workflows/`. Build and release tooling in `bin/`. Community
-Applications files: `ca_profile.xml` + `plugins/unraid-unzip.xml`.
+Applications files: `ca_profile.xml` + `plugins/unraid-unzip.xml` (plugin) and
+`templates/` (Docker apps).
 
 ## Workspace rules
 
@@ -69,6 +74,7 @@ documentation.
 | `docs-internal/research-findings.md` | Verified File Manager internals, 7-Zip behaviour, security tests, old-plugin audit, packaging facts |
 | `docs-internal/implementation-plan.md` | Architecture, file layout, API, job runner, extraction algorithm, UI injection, packaging, milestones and test plan |
 | `docs-internal/issues-2026-11-08.md` | The 2026-11-08 bug report, each item's root cause, fix and verification |
+| `docs-internal/songs-download-implementation-plan.md` | songs-download app: endpoint spec, container design, "never delete downloads" rule, CA template and CI/CD plan |
 
 ## Key design decisions
 
@@ -87,6 +93,10 @@ documentation.
   stripping and path/symlink safety controllable.
 - Never write job logs to the USB flash drive. Active job state and logs live in
   `/tmp/unraid-unzip/`; only a bounded history summary is persisted.
+- songs-download never deletes files under `/downloads` (it only adds). Stream
+  preview cache is kept in `/tmp` with a TTL and is the only place any cleanup
+  runs. PUID/PGID drop is done via `setpriv` in the entrypoint, never by chowning
+  the shared music folder.
 
 ## Build and release
 

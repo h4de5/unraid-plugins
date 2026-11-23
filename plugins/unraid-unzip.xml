@@ -6,7 +6,6 @@
   <Project>https://github.com/h4de5/unraid-plugins</Project>
   <Support>https://github.com/h4de5/unraid-plugins/issues</Support>
   <Icon>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/src/usr/local/emhttp/plugins/unraid-unzip/icons/unraid-unzip.png</Icon>
-  <ReadMe>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/README.md</ReadMe>
   <Overview>Extract zip, 7z, tar and other archives straight from the File Manager. Configure passwords, exclude patterns and the overwrite policy on a settings page. Uses a pinned, SHA256-verified 7-Zip runtime.</Overview>
   <Category>Tools:Utilities</Category>
   <Beta>false</Beta>

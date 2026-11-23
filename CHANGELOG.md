@@ -4,6 +4,17 @@
 Newest version first. The release pipeline reads the topmost `### <version>`
 entry for the GitHub Release body and for the generated `.plg` / landing page.
 
+### 2026.11.22.01
+
+- Docker app: add `songs-download`, a self-contained container (Node.js 22, yt-dlp, ffmpeg) for YouTube music search, audio preview and download to a local music folder. Ships as a Community Applications template (`templates/songs-download.xml`, port 8765) and is built and published to `ghcr.io/h4de5/songs-download` by the `Docker (songs-download)` workflow. The app only adds files under `/downloads`; it never deletes.
+- Community Applications: add `amazon-mcp`, a Docker app template for product search on amazon.de. The template wraps the upstream image `ghcr.io/jnslmk/amazon-mcp` (streamable HTTP on port 8000) and is listed in `ca_profile.xml` and the README.
+
+### 2026.11.15.01
+
+- Community Applications: add a repository icon (`icon.svg`, referenced by raw URL) to `ca_profile.xml`.
+- Community Applications: remove the `<ReadMe>` tag from `plugins/unraid-unzip.xml`; the `<Project>` URL already points at the repository. `<Forum>` stays on the GitHub issue tracker, `<WebPage>` points at the GitHub project, and no screenshot is included.
+- Manifest: the generated `.plg` now carries `max="7.99.99"` next to `min="7.0.0"`, so the version bounds live in one place and match the CA wrapper.
+
 ### 2026.11.10.03
 
 - Security: escape the archive path and target directory with `escapeHtml()` in the extract dialog (`js/unraid-unzip.js`), closing an HTML-injection (XSS) vector from a crafted archive or directory name.
@@ -27,7 +38,7 @@ entry for the GitHub Release body and for the generated `.plg` / landing page.
 ### 2026.11.08.05
 
 - Add Community Applications submission files: `ca_profile.xml` (repo profile) and `plugins/unraid-unzip.xml` (plugin wrapper, category Tools:Utilities).
-- `.plg` support link now points at the GitHub issue tracker instead of the repo root.
+- `.plg` support link now points to the GitHub issue tracker instead of the repo root.
 - Repo-wide style: em/en dashes replaced with plain hyphens; rule added to `AGENTS.md`.
 
 ### 2026.11.08.04

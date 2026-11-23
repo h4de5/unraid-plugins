@@ -93,6 +93,7 @@ template = """<?xml version='1.0' standalone='yes'?>
   pluginURL="{plugin_url}"
   support="https://github.com/{owner}/{repo}/issues"
   min="7.0.0"
+  max="7.99.99"
   icon="file-archive-o"
 >
 

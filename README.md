@@ -15,6 +15,36 @@ Applications](https://ca.unraid.net/).
 > CA wrapper, extend `bin/` to build its package, and list it in the table
 > above plus the matching heading section.
 
+## Docker apps
+
+Docker apps ship as Community Applications templates in `templates/` and are
+installed from the unRAID GUI or from Community Applications.
+
+| App | Description | Upstream image | Port |
+|---|---|---|---|
+| [songs-download](#songs-download) | YouTube music search, audio preview and download | `ghcr.io/h4de5/songs-download` | 8765 |
+| [amazon-mcp](#amazon-mcp) | MCP server (streamable HTTP) for product search on amazon.de | `ghcr.io/jnslmk/amazon-mcp` | 8000 |
+
+### songs-download
+
+YouTube music search with audio preview and download to a local music folder.
+Runs as a single Docker container; the download folder is bind-mounted
+read/write. Upstream project and build pipeline live in this repository
+(`docker/songs-download/`).
+
+### amazon-mcp
+
+MCP server exposing product search on amazon.de over **streamable HTTP**
+(endpoint `http://<host>:8000/mcp`, health check on `/healthz`). Intended to be
+used from MCP clients such as Open WebUI or opencode.
+
+This template is a thin wrapper around the
+[upstream image](https://github.com/jnslmk/amazon-mcp)
+(`ghcr.io/jnslmk/amazon-mcp`); no rebuild or publishing happens from this
+repository. All request pacing, timeout and retry behaviour is controlled via
+the advanced variables (`AMZ_MAX_CONCURRENT`, `AMZ_REQUEST_TIMEOUT_MS`,
+`AMZ_PACING_*`, `AMZ_BACKOFF_*`, `AMZ_RETRY_AFTER_MAX_S`, `AMZ_USER_AGENT`).
+
 ---
 
 ## unraid-unzip
