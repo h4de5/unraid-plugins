@@ -3,7 +3,7 @@
 #
 # Verifies the 7-Zip exclude-pattern normalisation: patterns are turned into
 # -xr! arguments that match at any archive depth, and invalid input is dropped.
-# No 7-Zip binary is required — this tests the pure string transformation.
+# No 7-Zip binary is required - this tests the pure string transformation.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

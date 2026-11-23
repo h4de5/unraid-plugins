@@ -1,37 +1,80 @@
-# unraid-unzip
+# unraid-plugins
+
+A collection of unRAID plugins in one repository. Each plugin ships as a
+standard unRAID plugin package, is published through the same release pipeline,
+and can be installed from the unRAID GUI or from [Community
+Applications](https://ca.unraid.net/).
+
+## Plugins
+
+| Plugin | Description | Status |
+|---|---|---|
+| [unraid-unzip](#unraid-unzip) | Right-click archive extraction for the unRAID File Manager | 2026.11.08.05 |
+
+> Adding a plugin: drop its sources under `src/`, add its `plugins/<name>.xml`
+> CA wrapper, extend `bin/` to build its package, and list it in the table
+> above plus the matching heading section.
+
+## Docker apps
+
+Docker apps ship as Community Applications templates in `templates/` and are
+installed from the unRAID GUI or from Community Applications.
+
+| App | Description | Upstream image | Port |
+|---|---|---|---|
+| [songs-download](#songs-download) | YouTube music search, audio preview and download | `ghcr.io/h4de5/songs-download` | 8765 |
+| [amazon-mcp](#amazon-mcp) | MCP server (streamable HTTP) for product search on amazon.de | `ghcr.io/jnslmk/amazon-mcp` | 8000 |
+
+### songs-download
+
+YouTube music search with audio preview and download to a local music folder.
+Runs as a single Docker container; the download folder is bind-mounted
+read/write. Upstream project and build pipeline live in this repository
+(`docker/songs-download/`).
+
+### amazon-mcp
+
+MCP server exposing product search on amazon.de over **streamable HTTP**
+(endpoint `http://<host>:8000/mcp`, health check on `/healthz`). Intended to be
+used from MCP clients such as Open WebUI or opencode.
+
+This template is a thin wrapper around the
+[upstream image](https://github.com/jnslmk/amazon-mcp)
+(`ghcr.io/jnslmk/amazon-mcp`); no rebuild or publishing happens from this
+repository. All request pacing, timeout and retry behaviour is controlled via
+the advanced variables (`AMZ_MAX_CONCURRENT`, `AMZ_REQUEST_TIMEOUT_MS`,
+`AMZ_PACING_*`, `AMZ_BACKOFF_*`, `AMZ_RETRY_AFTER_MAX_S`, `AMZ_USER_AGENT`).
+
+---
+
+## unraid-unzip
 
 Archive extraction for the unRAID File Manager. It adds **Extract** actions to
 the file/folder context menus and extracts archives to a chosen destination.
 
-Built on [7-Zip](https://www.7-zip.org/) (`7zzs`) — the binary is downloaded and
+Built on [7-Zip](https://www.7-zip.org/) (`7zzs`) - the binary is downloaded and
 SHA256-verified at install time; it is **not** bundled in the package.
 
-## Disclaimer
+Project page: [https://h4de5.github.io/unraid-plugins/](https://h4de5.github.io/unraid-plugins/)
+(changelog + install URL).
 
-This repository was **vibe-coded**: I have not looked at the source code, and you
-probably should not either. I cannot evaluate the code either, because I have no
-experience writing unRAID plugins. **Use it at your own risk.**
-
-This plugin was built to cover my own use-case. No further use-cases are
-currently planned.
-
-## Supported input formats
+### Supported input formats
 
 Extract (read) support:
 
 - 7z, zip
-- RAR / RAR5 (extraction only — RAR creation is out of scope for licensing)
+- RAR / RAR5 (extraction only - RAR creation is out of scope for licensing)
 - tar, tar.gz / tgz, tar.bz2 / tbz, tar.xz / txz, tar.zst (compressed tarballs
   are handled with a two-stage 7-Zip pipeline)
 
 Encrypted archives: saved passwords are tried automatically, and a prompt is
 shown if none match.
 
-## Features
+### Features
 
 - **Context-menu actions** on archive files in the File Manager (`/Browse`).
 - **Destination + overwrite policy** per extraction (overwrite / skip / rename).
-- **Exclude patterns** (e.g. `node_modules`, `*.log`) — matched at any archive
+- **Exclude patterns** (e.g. `node_modules`, `*.log`) - matched at any archive
   depth.
 - **Job model**: extractions run in the background; active state and logs live in
   `/tmp/unraid-unzip/` so the USB flash drive is never written during jobs.
@@ -39,26 +82,27 @@ shown if none match.
   notifications.
 - **Dark-theme aware** UI, mobile-friendly dialog.
 
-## Requirements
+### Requirements
 
 - unRAID 7.0 or newer (the plugin ships as a standard unRAID plugin package).
 - Internet access at **install time** to fetch the pinned 7-Zip runtime
   (verified by SHA256). No network is needed at runtime.
 
-## Installation
+### Installation
 
 1. Add the plugin URL in **Settings → Plugins → Add/Remove**:
-   `https://h4de5.github.io/unraid-unzip/unraid-unzip.plg`
-   (a stable URL — always the latest released version, with a verified
+   `https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg`
+   (a stable URL - always the latest released version, with a verified
    checksum). Or download the `.txz` from the
-   [Releases](https://github.com/h4de5/unraid-unzip/releases) page.
+   [Releases](https://github.com/h4de5/unraid-plugins/releases) page. Or install
+   `unraid-unzip` from Community Applications.
 2. Install (the `.plg` auto-downloads the package + the pinned 7-Zip runtime,
    both verified by SHA256).
 3. Open **Settings → unraid-unzip** to configure passwords, exclude patterns and
    the default overwrite policy.
 4. Right-click an archive in the File Manager → **Extract…**.
 
-## How it works
+### How it works
 
 - The File Manager has no plugin hook; the UI is injected by a
   `Menu="Buttons"` page included in the page head, which wraps `context.attach`
@@ -70,18 +114,22 @@ shown if none match.
   visible in `ps`; it is a known, documented trade-off (7-Zip's bare `-p` does
   not read a password from stdin on Linux 26.05).
 
+---
+
 ## Development
 
 ```
 bin/     build.sh (public, CI build)   generate-pages.sh (manifest + landing)
          deploy.sh (local host deploy, not shipped)
 src/     plugin sources (emhttp pages, api, js, css, scripts)
+plugins/ Community Applications plugin wrappers (one <name>.xml per plugin)
+ca_profile.xml  Community Applications repository profile
 CHANGELOG.md  changelog (single source; topmost "### <version>" = current release)
 tests/   bash unit tests (merge-tree, exclude normalisation) + 7-Zip checksum
 packages/ local build output (gitignored)
 ```
 
-Build a package locally (deterministic — local and CI builds hash identically):
+Build a package locally (deterministic - local and CI builds hash identically):
 
 ```sh
 bin/build.sh --version 2026.11.08.03 --out-dir packages
@@ -104,14 +152,35 @@ bash tests/verify-7z-checksum.sh
 ## Releases
 
 Tags are the unRAID version verbatim (e.g. `2026.11.08.03`). Add the release
-note as a `### <version>` entry in `CHANGELOG.md`, push, then tag — pushing the
-tag builds the `.txz`, publishes it as a GitHub Release asset, generates the
-install manifest from that build's checksum, and deploys the manifest + landing
-page to the stable URL. Nothing about the manifest is committed by hand.
+note as a `### <version>` entry in `CHANGELOG.md`, push, then tag - pushing the
+tag builds the `.txz`, publishes it as a GitHub Release asset, and regenerates
+the install manifest from that build's checksum. The manifest
+(`unraid-unzip.plg`, tracked at the repo root) is then committed back to `main`
+by the pipeline, so the stable URL always resolves to the latest release. You
+never hand-edit it.
 
 The stable plugin URL (always the latest release) is
-`https://h4de5.github.io/unraid-unzip/unraid-unzip.plg`.
+`https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg`.
+
+## Disclaimer
+
+This repository was **vibe-coded**: I have not looked at the source code, and
+you probably should not either. I cannot evaluate the code either, because I
+have no experience writing unRAID plugins. **Use it at your own risk.**
+
+This plugin was built to cover my own use-case. No further use-cases are
+currently planned.
+
+The architecture, plugin manifest format, File Manager injection technique, and
+7-Zip integration in this project are based on work and documentation by
+contributors to the unRAID community - in particular the
+[zip_manager](https://github.com/jcofer555/zip_manager) plugin, the
+[unRAID webgui](https://github.com/unraid/webgui) source,
+[plugin-docs](https://github.com/mstrhakr/plugin-docs), and
+[folder.view3](https://github.com/chodeus/folder.view3).
+Those projects solved the same problems years before this repo existed; the
+credit for the underlying patterns is entirely theirs.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).

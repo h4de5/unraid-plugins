@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (defaults to the topmost CHANGELOG.md entry)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -26,10 +32,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Derive version from tag
+      - name: Derive version
         id: ver
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$(python3 -c 'import re; t=open("CHANGELOG.md").read(); m=re.search(r"(?m)^### (\S+)", t); print(m.group(1))')"
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing $VERSION"
 
@@ -69,7 +81,7 @@ jobs:
           PKG="unraid-unzip-${VERSION}-noarch-1.txz"
           grep -q "unraid-unzip-${VERSION}-noarch-1.txz" /tmp/uuz-check/unraid-unzip.plg
           grep -q "<SHA256>${SHA}</SHA256>" /tmp/uuz-check/unraid-unzip.plg
-          grep -q 'https://h4de5.github.io/unraid-unzip/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
+          grep -q 'https://raw.githubusercontent.com/h4de5/unraid-plugins/main/unraid-unzip.plg' /tmp/uuz-check/unraid-unzip.plg
           echo "generated .plg is consistent with the build"
 
       - name: Release body (changelog for this version)
@@ -92,10 +104,21 @@ jobs:
           echo "release body:"; cat body.md
         shell: bash
 
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG_NAME="$GITHUB_REF_NAME"
+          else
+            TAG_NAME="v${{ steps.ver.outputs.version }}"
+          fi
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag: $TAG_NAME"
+
       - name: Publish GitHub Release (.txz)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.tag_name }}
           name: unraid-unzip ${{ steps.ver.outputs.version }}
           body_path: body.md
           files: |
@@ -110,10 +133,55 @@ jobs:
             --sha256 "${{ steps.build.outputs.sha }}" \
             --out pages
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: pages
-          destination_dir: .
-          keep_files: false
+          path: pages
+
+      # The canonical install manifest lives at the REPO ROOT (unraid-unzip.plg,
+      # tracked in git) so the stable raw URL (raw.githubusercontent.com/.../main/
+      # unraid-unzip.plg) and the CA wrapper always resolve to the latest release.
+      # After the Release exists, regenerate it from this build's SHA and commit it
+      # to main. This is the pipeline updating its own manifest - not a hand commit.
+      - name: Commit updated root manifest to main
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          SHA="${{ steps.build.outputs.sha }}"
+          bash bin/generate-pages.sh \
+            --version "$VERSION" \
+            --sha256 "$SHA" \
+            --out /tmp/uuz-root
+          # Commit from the existing checkout: actions/checkout@v4 already wires a
+          # push token into git config (extraheader), so no second clone (and no
+          # GITHUB_TOKEN lookup) is needed.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          if git show "origin/main:unraid-unzip.plg" | cmp -s - /tmp/uuz-root/unraid-unzip.plg; then
+            echo "root manifest on main already at ${VERSION}"
+          else
+            cp /tmp/uuz-root/unraid-unzip.plg unraid-unzip.plg
+            git add unraid-unzip.plg
+            git commit -m "chore(release): bump root manifest to ${VERSION}"
+            if ! git push origin HEAD:main; then
+              # main has advanced past the tag commit; rebase on it and retry
+              git pull --rebase origin main
+              git push origin HEAD:main
+            fi
+            echo "root manifest on main bumped to ${VERSION}"
+          fi
+
+  deploy:
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

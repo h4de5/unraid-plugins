@@ -1,0 +1,34 @@
+<Container version="2">
+  <Name>amazon-mcp</Name>
+  <Repository>ghcr.io/jnslmk/amazon-mcp</Repository>
+  <Registry>https://ghcr.io/jnslmk/amazon-mcp</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <WebUI>http://[IP]:[PORT:8000]/healthz</WebUI>
+  <Overview>MCP server (streamable HTTP on port 8000) for product search on amazon.de. Upstream image by jnslmk; this template only publishes it.</Overview>
+  <Project>https://github.com/jnslmk/amazon-mcp</Project>
+  <Support>https://github.com/jnslmk/amazon-mcp/issues</Support>
+  <TemplateURL>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/templates/amazon-mcp.xml</TemplateURL>
+  <ReadMe>https://raw.githubusercontent.com/h4de5/unraid-plugins/main/README.md</ReadMe>
+  <Category>Application:Other</Category>
+  <ExtraSearchTerms>amazon product search mcp model context protocol shopping</ExtraSearchTerms>
+  <Changes>Initial release</Changes>
+  <Date>2026-11-22</Date>
+  <MinVer>6.1</MinVer>
+  <MaxVer>7.3</MaxVer>
+  <License>MIT</License>
+  <Config Name="WebUI" Target="8000" Default="8000" Mode="tcp" Description="HTTP port for the MCP endpoint (/mcp) and health check (/healthz)." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="PUID" Target="PUID" Default="99" Description="User ID to run the container as." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PGID" Target="PGID" Default="100" Description="Group ID to run the container as." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="TZ" Target="TZ" Default="Europe/Berlin" Description="Timezone." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="LogLevel" Target="LOG_LEVEL" Default="INFO" Description="Log level (DEBUG, INFO, WARNING, ERROR)." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MaxConcurrent" Target="AMZ_MAX_CONCURRENT" Default="2" Description="Maximum concurrent amazon.de requests." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="RequestTimeoutMs" Target="AMZ_REQUEST_TIMEOUT_MS" Default="45000" Description="Per-request timeout in milliseconds." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PacingMinS" Target="AMZ_PACING_MIN_S" Default="1.5" Description="Minimum pacing delay between requests in seconds." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PacingMaxS" Target="AMZ_PACING_MAX_S" Default="4.0" Description="Maximum pacing delay between requests in seconds." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="BackoffBaseS" Target="AMZ_BACKOFF_BASE_S" Default="2.0" Description="Exponential backoff base in seconds." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="BackoffMaxS" Target="AMZ_BACKOFF_MAX_S" Default="120.0" Description="Exponential backoff cap in seconds." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="RetryAfterMaxS" Target="AMZ_RETRY_AFTER_MAX_S" Default="180.0" Description="Maximum value honoured from a Retry-After header, in seconds." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="UserAgent" Target="AMZ_USER_AGENT" Default="" Description="Optional custom User-Agent string." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>
