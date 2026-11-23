@@ -31,75 +31,124 @@ document.getElementById('searchForm').addEventListener('submit', async (e) => {
   try {
     const res = await fetch('/search.php?q=' + encodeURIComponent(q));
     const data = await res.json();
-    if (!Array.isArray(data)) { status.textContent = data.error || 'Fehler'; return; }
-    status.textContent = data.length + ' Ergebnisse';
-    data.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
-      const img = document.createElement('img');
-      img.src = item.thumb;
-      img.alt = '';
-      img.addEventListener('click', () => play(item.id));
-      thumb.appendChild(img);
+    if (!res.ok) { status.textContent = (data && data.error) || 'Fehler'; return; }
+    const local = (data.local || []);
+    const youtube = (data.youtube || []);
+    status.textContent = (local.length + ' lokal · ' + youtube.length + ' auf YouTube');
 
-      const timeBadge = document.createElement('span');
-      timeBadge.className = 'badge time';
-      timeBadge.textContent = item.length || '';
-      thumb.appendChild(timeBadge);
-
-      if (item.isOfficial) {
-        const b = document.createElement('span');
-        b.className = 'badge official';
-        b.textContent = 'Official';
-        thumb.appendChild(b);
-      }
-      if (item.isShort) {
-        const b = document.createElement('span');
-        b.className = 'badge short';
-        b.textContent = 'Short';
-        thumb.appendChild(b);
-      }
-      if (item.isCover) {
-        const b = document.createElement('span');
-        b.className = 'badge cover';
-        b.textContent = 'Cover';
-        thumb.appendChild(b);
-      }
-      // technical badges (e.g. 4K) are intentionally not shown
-      card.appendChild(thumb);
-
-      const title = document.createElement('div');
-      title.className = 'title';
-      title.textContent = item.displayName || item.title || '';
-      card.appendChild(title);
-
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      const views = abbreviateViews(item.views);
-      meta.textContent = [views, item.published].filter(Boolean).join(' · ');
-      const link = document.createElement('a');
-      link.className = 'videoLink';
-      link.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(item.id);
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = '↗';
-      meta.appendChild(link);
-      card.appendChild(meta);
-
-      const dl = document.createElement('button');
-      dl.className = 'dl';
-      dl.textContent = 'Download';
-      dl.addEventListener('click', (ev) => { ev.stopPropagation(); download(item.id, dl); });
-      card.appendChild(dl);
-
-      results.appendChild(card);
-    });
+    if (local.length) {
+      const h = document.createElement('div');
+      h.className = 'section';
+      h.textContent = 'Lokal (' + local.length + ')';
+      results.appendChild(h);
+      local.forEach(item => results.appendChild(makeCard(item, true)));
+    }
+    if (youtube.length) {
+      const h = document.createElement('div');
+      h.className = 'section';
+      h.textContent = 'YouTube (' + youtube.length + ')';
+      results.appendChild(h);
+      youtube.forEach(item => results.appendChild(makeCard(item, false)));
+    }
+    if (!local.length && !youtube.length) status.textContent = 'Keine Treffer.';
   } catch (err) {
     status.textContent = 'Fehler: ' + err;
   }
 });
+
+function makeCard(item, isLocal) {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const thumb = document.createElement('div');
+  thumb.className = 'thumb';
+  if (isLocal) {
+    const img = document.createElement('img');
+    img.src = 'cover.php?id=' + encodeURIComponent(item.id);
+    img.alt = '';
+    img.addEventListener('error', function handler() {
+      img.removeEventListener('error', handler);
+      thumb.classList.add('local');
+      img.remove();
+      thumb.textContent = '\u266A';
+    });
+    img.addEventListener('click', () => playLocal(item.id, item.name));
+    thumb.appendChild(img);
+  } else {
+    const img = document.createElement('img');
+    img.src = item.thumb;
+    img.alt = '';
+    img.addEventListener('click', () => play(item.id));
+    thumb.appendChild(img);
+
+    const timeBadge = document.createElement('span');
+    timeBadge.className = 'badge time';
+    timeBadge.textContent = item.length || '';
+    thumb.appendChild(timeBadge);
+
+    if (item.isOfficial) {
+      const b = document.createElement('span');
+      b.className = 'badge official';
+      b.textContent = 'Official';
+      thumb.appendChild(b);
+    }
+    if (item.isShort) {
+      const b = document.createElement('span');
+      b.className = 'badge short';
+      b.textContent = 'Short';
+      thumb.appendChild(b);
+    }
+    if (item.isCover) {
+      const b = document.createElement('span');
+      b.className = 'badge cover';
+      b.textContent = 'Cover';
+      thumb.appendChild(b);
+    }
+    if (item.already) {
+      const b = document.createElement('span');
+      b.className = 'badge already';
+      b.textContent = 'Lokal vorhanden';
+      thumb.appendChild(b);
+    }
+  }
+  card.appendChild(thumb);
+
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = item.name || item.displayName || item.title || '';
+  card.appendChild(title);
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  if (isLocal) {
+    meta.textContent = item.artist || 'Lokale Datei';
+  } else {
+    const views = abbreviateViews(item.views);
+    meta.textContent = [views, item.published].filter(Boolean).join(' · ');
+    const link = document.createElement('a');
+    link.className = 'videoLink';
+    link.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(item.id);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = '\u2197';
+    meta.appendChild(link);
+  }
+  card.appendChild(meta);
+
+  const dl = document.createElement('button');
+  dl.className = 'dl';
+  if (isLocal || item.already) {
+    dl.className = 'dl disabled';
+    dl.textContent = 'Geladen';
+    dl.disabled = true;
+  } else {
+    dl.textContent = 'Download';
+    dl.addEventListener('click', (ev) => { ev.stopPropagation(); download(item.id, dl); });
+  }
+  card.appendChild(dl);
+
+  return card;
+}
 
 async function play(id) {
   nowPlaying.textContent = 'Lade Vorschau...';
@@ -120,6 +169,16 @@ async function play(id) {
   }
 }
 
+function playLocal(id, name) {
+  nowPlaying.textContent = 'Lade lokale Datei...';
+  player.hidden = false;
+  const streamUrl = 'localstream.php?id=' + encodeURIComponent(id);
+  player.src = streamUrl;
+  const p = player.play();
+  if (p && typeof p.catch === 'function') p.catch(() => {});
+  nowPlaying.textContent = name || 'Lokale Datei';
+}
+
 async function download(id, btn) {
   btn.disabled = true;
   btn.textContent = '...';
@@ -131,9 +190,11 @@ async function download(id, btn) {
     });
     const data = await res.json();
     if (!data.success) {
-      alert('Download fehlgeschlagen:\n' + (data.output || ''));
+      alert('Download fehlgeschlagen\n\n' + (data.reason || data.output || 'Unbekannter Fehler'));
     } else {
       btn.textContent = '✓';
+      btn.className = 'dl disabled';
+      btn.disabled = true;
     }
   } catch (err) {
     alert('Fehler: ' + err);

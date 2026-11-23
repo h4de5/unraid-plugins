@@ -4,13 +4,27 @@ const fs = require('fs');
 const path = require('path');
 const { makeName, stripNoise, sanitizeName } = require('./lib/youtube');
 const { contentType, findCached, cleanupOld } = require('./lib/stream-cache');
+const localIndex = require('./lib/local-index');
 
 const PORT = parseInt(process.env.PORT || '8765', 10);
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || '/downloads';
 const TMP_DIR = '/tmp';
+const INDEX_FILE = path.join(TMP_DIR, 'songs-download', 'local-index.json');
 const TTL = parseInt(process.env.STREAM_CACHE_TTL_MIN || '60', 10);
 const JS_RUNTIME = process.env.JS_RUNTIME || 'node';
 const FFMPEG_LOCATION = process.env.FFMPEG_LOCATION || '/usr/bin';
+// Map yt-dlp failures to a short, human-readable reason so the UI does not
+// just show a raw tool tail.
+function downloadError(text) {
+  const t = String(text || '');
+  if (/sign in to confirm your age|age[- ]restrict|age[- ]gate/i.test(t)) {
+    return 'Das Video ist altersbeschränkt und ohne YouTube-Login nicht verfügbar.';
+  }
+  if (/private video/i.test(t)) return 'Privates Video - nicht herunterladbar.';
+  if (/unavailable/i.test(t)) return 'Video nicht verfügbar.';
+  if (/403|forbidden|request blocked/i.test(t)) return 'YouTube hat die Anfrage blockiert (403). Versuche es später erneut.';
+  return null;
+}
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
@@ -21,6 +35,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 try { fs.mkdirSync(DOWNLOAD_DIR, { recursive: true }); } catch (e) { console.error('mkdir DOWNLOAD_DIR failed:', e && e.code, e && e.message); }
 cleanupOld(TMP_DIR, TTL);
 setInterval(() => cleanupOld(TMP_DIR, TTL), 10 * 60 * 1000);
+
+// Build/update the local index of already-downloaded files before the server
+// starts listening, so the first search is already complete.
 
 function runYtDlp(args) {
   return new Promise((resolve) => {
@@ -37,6 +54,7 @@ app.get('/search.php', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) { res.json([]); return; }
   try {
+    const local = localIndex.searchLocal(q);
     const payload = JSON.stringify({ context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' } }, query: q });
     const r = await fetch('https://www.youtube.com/youtubei/v1/search?prettyPrint=false', {
       method: 'POST',
@@ -94,10 +112,11 @@ app.get('/search.php', async (req, res) => {
       const secs = durationSeconds(r.length);
       if (secs > 0 && (secs <= 60 || secs > 900)) continue;
       seen[r.id] = true;
+      r.already = localIndex.hasVideoId(r.id);
       unique.push(r);
       if (unique.length >= 24) break;
     }
-    res.json(unique);
+    res.json({ local, youtube: unique });
   } catch (e) {
     res.status(502).json({ error: String(e && e.message || e) });
   }
@@ -170,6 +189,62 @@ app.get('/stream.php', async (req, res) => {
   }
 });
 
+// Stream a local (already downloaded) file by index token. The downloads dir
+// is never served statically; this is the only HTTP path into it.
+app.get('/localstream.php', (req, res) => {
+  const id = String(req.query.id || '');
+  if (!/^[0-9a-f]{16}$/.test(id)) { res.status(400).end(); return; }
+  const entry = localIndex.resolveLocal(id);
+  if (!entry || !fs.existsSync(entry.path)) { res.status(404).end(); return; }
+  const ct = contentType(entry.ext) || 'application/octet-stream';
+  const total = fs.statSync(entry.path).size;
+  const range = req.headers.range;
+  res.setHeader('Content-Type', ct);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Content-Disposition', 'inline; filename="' + entry.path.split('/').pop().replace(/"/g, '') + '"');
+  if (range) {
+    const m = range.match(/bytes=(\d*)-(\d*)/);
+    let start, end;
+    if (m && m[1] === '' && m[2] !== '') {
+      const suffix = parseInt(m[2], 10);
+      start = Math.max(0, total - suffix);
+      end = total - 1;
+    } else {
+      start = (m && m[1] !== '') ? parseInt(m[1], 10) : 0;
+      end = (m && m[2] !== '') ? parseInt(m[2], 10) : total - 1;
+    }
+    if (isNaN(start) || isNaN(end) || start >= total || end >= total || start > end || start < 0) {
+      res.status(416).setHeader('Content-Range', 'bytes */' + total).end();
+      return;
+    }
+    const chunkSize = end - start + 1;
+    res.status(206);
+    res.setHeader('Content-Range', 'bytes ' + start + '-' + end + '/' + total);
+    res.setHeader('Content-Length', chunkSize);
+    fs.createReadStream(entry.path, { start, end }).pipe(res);
+  } else {
+    res.setHeader('Content-Length', total);
+    fs.createReadStream(entry.path).pipe(res);
+  }
+});
+
+// Serve the extracted JPEG cover for a local file by index token. Extracted
+// once per file (ffmpeg first frame) and then served from the container-local
+// cover dir. Files without an embedded cover stream return 404.
+app.get('/cover.php', async (req, res) => {
+  const id = String(req.query.id || '');
+  if (!/^[0-9a-f]{16}$/.test(id)) { res.status(400).end(); return; }
+  if (!localIndex.resolveLocal(id)) { res.status(404).end(); return; }
+  let file = null;
+  try { file = await localIndex.extractCover(id); } catch (e) { file = null; }
+  if (!file || !fs.existsSync(file)) { res.status(404).end(); return; }
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.setHeader('Content-Length', fs.statSync(file).size);
+  fs.createReadStream(file).pipe(res);
+});
+
 app.post('/download.php', async (req, res) => {
   const id = String((req.body && req.body.id) || req.query.id || '');
   if (!/^[A-Za-z0-9_-]{11}$/.test(id)) { res.status(400).json({ error: 'invalid id' }); return; }
@@ -184,6 +259,14 @@ app.post('/download.php', async (req, res) => {
   let baseName = null;
   if (meta.code === 0 && metaLines.length >= 2) {
     baseName = makeName(metaLines[0], metaLines[1]);
+  } else {
+    // The video is not downloadable (age-gated, private, unavailable). Return
+    // a clear reason now instead of re-running the full (slow) extract step.
+    const reason = downloadError(meta.stdout + '\n' + meta.stderr);
+    if (reason) {
+      res.json({ success: false, rc: meta.code, reason, output: meta.stderr.split(/\r?\n/).filter(Boolean).slice(-5).join('\n') });
+      return;
+    }
   }
   const year = new Date().getFullYear();
   const outDir = path.join(DOWNLOAD_DIR, String(year));
@@ -201,7 +284,19 @@ app.post('/download.php', async (req, res) => {
   ]);
   const output = (stdout + '\n' + stderr).split(/\r?\n/).filter(Boolean);
   const tail = output.slice(-15);
-  res.json({ success: code === 0, rc: code, name: baseName, output: tail.join('\n') });
+  const reason = code === 0 ? null : downloadError(stdout + '\n' + stderr);
+  if (code === 0) {
+    // Register the freshly written file in the local index so it shows up in
+    // future searches and the matching YouTube result is marked "already".
+    try {
+      const prefix = (baseName !== null ? baseName : '') + '.';
+      const cands = fs.readdirSync(outDir).filter((f) => f.toLowerCase().startsWith(prefix.toLowerCase()));
+      if (cands.length) {
+        localIndex.addFile(path.join(outDir, cands[0]));
+      }
+    } catch (e) { console.error('index addFile failed:', e && e.message); }
+  }
+  res.json({ success: code === 0, rc: code, name: baseName, reason, output: tail.join('\n') });
 });
 
 app.get('/version', (req, res) => {
@@ -210,6 +305,12 @@ app.get('/version', (req, res) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('songs-download listening on ' + PORT);
-});
+localIndex.init(DOWNLOAD_DIR, INDEX_FILE,
+  path.join(FFMPEG_LOCATION, 'ffprobe'),
+  path.join(FFMPEG_LOCATION, 'ffmpeg'),
+  path.join(TMP_DIR, 'songs-download', 'covers'))
+  .then(() => app.listen(PORT, '0.0.0.0', () => console.log('songs-download listening on ' + PORT)))
+  .catch((e) => {
+    console.error('local-index init failed:', e && e.message);
+    app.listen(PORT, '0.0.0.0', () => console.log('songs-download listening on ' + PORT));
+  });
