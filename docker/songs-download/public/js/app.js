@@ -69,6 +69,7 @@ function pickSuggestion(s) {
   qInput.value = s;
   hideSuggestions();
   qInput.focus();
+  document.getElementById('searchForm').requestSubmit();
 }
 
 function fetchSuggestions(q) {
