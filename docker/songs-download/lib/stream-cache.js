@@ -3,11 +3,15 @@ const path = require('path');
 
 const EXT_TYPES = {
   m4a: 'audio/mp4',
+  m4b: 'audio/mp4',
   mp3: 'audio/mpeg',
   webm: 'audio/webm',
   ogg: 'audio/ogg',
+  oga: 'audio/ogg',
   opus: 'audio/ogg',
   wav: 'audio/wav',
+  flac: 'audio/flac',
+  aac: 'audio/aac',
 };
 
 function contentType(ext) {

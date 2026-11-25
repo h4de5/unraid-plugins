@@ -15,6 +15,7 @@ function abbreviateViews(v) {
 const results = document.getElementById('results');
 const status = document.getElementById('status');
 const player = document.getElementById('player');
+const playerBar = document.getElementById('playerBar');
 const nowPlaying = document.getElementById('nowPlaying');
 player.addEventListener('error', () => {
   const e = player.error;
@@ -84,7 +85,7 @@ function fetchSuggestions(q) {
         seen[s.toLowerCase()] = true;
         return true;
       }).slice(0, 8);
-      sugActive = sugList.length ? 0 : -1;
+      sugActive = -1;
       renderSuggestions();
     })
     .catch(() => {});
@@ -105,10 +106,10 @@ qInput.addEventListener('keydown', (e) => {
   }
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    setActive((sugActive + 1) % sugList.length);
+    setActive(sugActive < 0 ? 0 : (sugActive + 1) % sugList.length);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    setActive((sugActive - 1 + sugList.length) % sugList.length);
+    setActive(sugActive < 0 ? sugList.length - 1 : (sugActive - 1 + sugList.length) % sugList.length);
   } else if (e.key === 'Enter' && sugActive >= 0) {
     e.preventDefault();
     pickSuggestion(sugList[sugActive]);
@@ -127,6 +128,8 @@ qInput.addEventListener('blur', () => {
 
 document.getElementById('searchForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (sugAbort) sugAbort.abort();
+  hideSuggestions();
   const q = document.getElementById('q').value.trim();
   if (!q) return;
   status.textContent = 'Suche...';
@@ -175,7 +178,7 @@ function makeCard(item, isLocal) {
       img.remove();
       thumb.textContent = '\u266A';
     });
-    img.addEventListener('click', () => playLocal(item.id, item.name));
+    img.addEventListener('click', () => playLocal(item.id, item.name, item.contentType));
     thumb.appendChild(img);
   } else {
     const img = document.createElement('img');
@@ -253,33 +256,83 @@ function makeCard(item, isLocal) {
   return card;
 }
 
+let currentTrack = null;
+let castBase = window.location.origin;
+
+function showPlayerBar() {
+  playerBar.hidden = false;
+}
+
+function trackLabel(t) {
+  return (t.artist ? t.artist + ' - ' : '') + (t.title || '');
+}
+
+// Local (phone) playback only. Hidden/ignored while a Cast session is active.
+function playLocalOnly(track, startSec) {
+  player.hidden = false;
+  player.src = track.path;
+  if (startSec > 0) { try { player.currentTime = startSec; } catch (e) {} }
+  const p = player.play();
+  if (p && typeof p.catch === 'function') p.catch(() => {});
+}
+
+function pauseLocal() {
+  player.pause();
+}
+
+// Play a track in whichever mode is active: on the phone by default, or on the
+// Chromecast while a session is connected. The phone only ever plays in local
+// mode, so it never competes with the receiver.
+function startPlay(track, startSec) {
+  currentTrack = track;
+  showPlayerBar();
+  if (castConnected()) {
+    pauseLocal();
+    loadOnCast(track, startSec);
+  } else {
+    nowPlaying.textContent = trackLabel(track);
+    playLocalOnly(track, startSec);
+  }
+}
+
+// Resume playback on the phone (e.g. after the Cast session ends).
+function resumeLocalAt(pos) {
+  if (!currentTrack) return;
+  nowPlaying.textContent = trackLabel(currentTrack);
+  playLocalOnly(currentTrack, pos || 0);
+}
+
 async function play(id) {
   nowPlaying.textContent = 'Lade Vorschau...';
-  player.hidden = false;
-  const streamUrl = 'stream.php?id=' + encodeURIComponent(id);
-  if (player.src !== new URL(streamUrl, window.location.href).href) {
-    player.src = streamUrl;
-  }
-  const playPromise = player.play();
-  if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+  showPlayerBar();
   try {
     const res = await fetch('/preview.php?id=' + encodeURIComponent(id));
     const data = await res.json();
-    if (data.error) { nowPlaying.textContent = data.error; player.pause(); return; }
-    nowPlaying.textContent = (data.artist ? data.artist + ' - ' : '') + data.title;
+    if (data.error) { nowPlaying.textContent = data.error; return; }
+    startPlay({
+      path: 'stream.php?id=' + encodeURIComponent(id),
+      contentType: data.contentType || 'audio/mp4',
+      title: data.title,
+      artist: data.artist || '',
+      album: 'Songs Download',
+    }, 0);
   } catch (err) {
     nowPlaying.textContent = 'Fehler: ' + err;
   }
 }
 
-function playLocal(id, name) {
-  nowPlaying.textContent = 'Lade lokale Datei...';
-  player.hidden = false;
-  const streamUrl = 'localstream.php?id=' + encodeURIComponent(id);
-  player.src = streamUrl;
-  const p = player.play();
-  if (p && typeof p.catch === 'function') p.catch(() => {});
-  nowPlaying.textContent = name || 'Lokale Datei';
+function playLocal(id, name, contentType) {
+  const parts = (name || '').split(' - ');
+  const artist = parts.length > 1 ? parts[0].trim() : '';
+  const title = parts.length > 1 ? parts.slice(1).join(' - ').trim() : (name || 'Lokale Datei');
+  startPlay({
+    path: 'localstream.php?id=' + encodeURIComponent(id),
+    contentType: contentType || 'audio/mp4',
+    localId: id,
+    title,
+    artist,
+    album: 'Lokale Musik',
+  }, 0);
 }
 
 async function download(id, btn) {
@@ -304,4 +357,214 @@ async function download(id, btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// Google Cast: only available in a secure context (https); the sender SDK is
+// loaded from gstatic after that check. The Cast button is hidden otherwise.
+const castBtn = document.getElementById('castBtn');
+const castControls = document.getElementById('castControls');
+const castPlayPause = document.getElementById('castPlayPause');
+const castStop = document.getElementById('castStop');
+const castSeek = document.getElementById('castSeek');
+const castTimeNow = document.getElementById('castTimeNow');
+const castTimeDur = document.getElementById('castTimeDur');
+const castVolume = document.getElementById('castVolume');
+const MEDIA_NS = 'urn:x-cast:com.google.cast.media';
+let castCtx = null;
+let userRequestedCast = false;
+let castStatus = null;    // last media status message from the receiver
+let castSeeking = false;  // user is dragging the seek bar
+
+function castConnected() {
+  return !!castCtx && castCtx.getCastState() === 'CONNECTED';
+}
+
+function castFmt(sec) {
+  sec = (isFinite(sec) && sec >= 0) ? Math.floor(sec) : 0;
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+function setPlayPauseIcon(playing) {
+  if (castPlayPause) castPlayPause.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+}
+
+function loadOnCast(track, startSec) {
+  const session = castCtx.getCurrentSession();
+  if (!session) return;
+  // The receiver is a separate device, so it must reach the stream over the
+  // network. Build the absolute URL from castBase (LAN address), not the
+  // browser origin (which may be the NPM-Plus https domain).
+  let contentId, ct;
+  if (track.localId) {
+    // Local file: go through the Cast-safe endpoint, which transcodes anything
+    // the Stock Receiver cannot decode (e.g. Opus-in-OGG) to MP3.
+    contentId = castBase + '/caststream.php?id=' + encodeURIComponent(track.localId);
+    ct = 'audio/mpeg';
+  } else {
+    contentId = castBase + '/' + track.path;
+    ct = track.contentType || 'audio/mp4';
+  }
+  const media = new chrome.cast.media.MediaInfo({
+    contentId: contentId,
+    contentType: ct,
+    streamType: chrome.cast.media.StreamType.BUFFERED,
+    metadata: new chrome.cast.media.GenericMediaMetadata({
+      title: track.title || '',
+      artist: track.artist || '',
+      albumName: track.album || '',
+    }),
+  });
+  const req = new chrome.cast.media.LoadRequest(media);
+  if (startSec > 0) { req.currentTime = startSec; }
+  req.autoplay = true;
+  player.hidden = true;
+  nowPlaying.textContent = 'Cast: ' + trackLabel(track);
+  castStatus = null;
+  setPlayPauseIcon(true);
+  const p = session.loadMedia(req);
+  if (p && typeof p.catch === 'function') p.catch((err) => {
+    nowPlaying.textContent = 'Cast-Fehler: ' + (err && (err.description || err.code) || err);
+  });
+}
+
+// Send a raw media-namespace command to the receiver (play/pause/seek/...),
+// reusing the session id from the last status message.
+function mediaCmd(command, extra) {
+  const session = castCtx && castCtx.getCurrentSession();
+  if (!session) return;
+  const msg = Object.assign({ command: command, mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0 }, extra || {});
+  const p = session.sendMessage(MEDIA_NS, msg);
+  if (p && typeof p.catch === 'function') {
+    p.catch((err) => { console.warn('cast ' + command + ' failed:', err && (err.code || err)); });
+  }
+}
+
+// Drive the control bar from a receiver status message.
+function applyCastStatus(status) {
+  if (!status || !status.playerState) return;
+  castStatus = status;
+  if (status.playerState === 'PLAYING' || status.playerState === 'PAUSED') {
+    setPlayPauseIcon(status.playerState === 'PLAYING');
+    const dur = status.duration || 0;
+    if (!castSeeking && dur) castSeek.value = Math.round((status.currentTime / dur) * 1000);
+    castTimeNow.textContent = castFmt(status.currentTime || 0);
+    castTimeDur.textContent = castFmt(dur);
+    if (status.volume && typeof status.volume.level === 'number') {
+      castVolume.value = Math.round(status.volume.level * 100);
+    }
+  } else if (status.playerState === 'IDLE') {
+    setPlayPauseIcon(false);
+    // IDLE is normal after a stop or when the track ends; only real failures
+    // (e.g. PLAYBACK_ERROR) are worth surfacing.
+    const idle = status.idleReason;
+    if (idle && idle !== 'FINISHED' && idle !== 'CANCELED') {
+      nowPlaying.textContent = 'Cast-Fehler: ' + idle;
+    }
+  }
+}
+
+if (window.isSecureContext && castBtn) {
+  // Control-bar wiring. Attached once; the buttons no-op while no session is
+  // active (mediaCmd guards on castConnected).
+  if (castPlayPause) castPlayPause.addEventListener('click', () => {
+    if (!castConnected() || !castStatus) return;
+    if (castStatus.playerState === 'PLAYING') mediaCmd('PAUSE'); else mediaCmd('PLAY');
+  });
+  if (castStop) castStop.addEventListener('click', () => { if (castConnected()) mediaCmd('STOP'); });
+  if (castSeek) {
+    castSeek.addEventListener('input', () => { castSeeking = true; });
+    castSeek.addEventListener('change', () => {
+      castSeeking = false;
+      if (!castStatus || !castStatus.duration) return;
+      mediaCmd('SEEK', { currentTime: (castSeek.value / 1000) * castStatus.duration });
+    });
+  }
+  let castVolTimer = null;
+  if (castVolume) castVolume.addEventListener('input', () => {
+    clearTimeout(castVolTimer);
+    castVolTimer = setTimeout(() => {
+      const level = castVolume.value / 100;
+      mediaCmd('VOLUME', { volume: { level: level, muted: level === 0 } });
+    }, 150);
+  });
+
+  (async () => {
+    try {
+      const res = await fetch('/castconfig');
+      const cfg = await res.json();
+      if (cfg && cfg.base) castBase = String(cfg.base).replace(/\/+$/, '');
+    } catch (e) { /* fall back to the browser origin */ }
+
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+      if (!isAvailable) return;
+      const ctx = cast.framework.CastContext.getInstance();
+      ctx.setOptions({ receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID });
+      castCtx = ctx;
+      let lastCastPos = 0;
+      ctx.addEventListener(cast.framework.CastContextEventType.CAST_STATE_CHANGED, (event) => {
+        const connected = event.castState === 'CONNECTED';
+        castBtn.classList.toggle('active', connected);
+        castBtn.title = connected ? 'Cast trennen (lokal weiter)' : 'An Chromecast senden';
+        if (castControls) castControls.hidden = !connected;
+        if (connected) {
+          // Follow the receiver's media status for the control bar and to
+          // surface real playback errors. Status arrives as a media-namespace
+          // message; addMessageListener is the reliable channel for it.
+          const session = ctx.getCurrentSession();
+          if (session) {
+            try { session.addMessageListener(MEDIA_NS, (ns, msg) => applyCastStatus(msg)); } catch (e) {}
+          }
+          // Ignore the auto-restored session from a previous page load.
+          if (!userRequestedCast) return;
+          // Entering cast mode: stop the phone and hand the current track to
+          // the receiver at the phone's position.
+          if (currentTrack) {
+            const pos = player.currentTime || 0;
+            pauseLocal();
+            loadOnCast(currentTrack, pos);
+          }
+        } else {
+          // Leaving cast mode (button tap or receiver drop): back to the phone,
+          // resuming where the receiver left off.
+          if (currentTrack) {
+            let pos = lastCastPos;
+            if (!pos && castStatus) { try { pos = castStatus.currentTime || 0; } catch (e) {} }
+            resumeLocalAt(pos);
+            lastCastPos = 0;
+            castStatus = null;
+          }
+        }
+      });
+      // The Cast Framework auto-restores the last session on page load. End it
+      // again unless the user just asked for a new session, so the receiver
+      // does not silently replay and the button reflects reality.
+      if (['CONNECTED', 'CONNECTING'].indexOf(ctx.getCastState()) !== -1 && !userRequestedCast) {
+        Promise.resolve(ctx.endSession(true)).catch((err) => {
+          nowPlaying.textContent = 'Cast trennen fehlgeschlagen: ' + (err && (err.description || err.code) || err);
+        });
+      }
+      castBtn.hidden = false;
+      castBtn.addEventListener('click', () => {
+        if (castConnected()) {
+          // Remember where the receiver was so the phone can resume there.
+          if (castStatus) { try { lastCastPos = castStatus.currentTime || 0; } catch (e) {} }
+          userRequestedCast = false;
+          Promise.resolve(ctx.endSession(true)).catch((err) => {
+            nowPlaying.textContent = 'Cast trennen fehlgeschlagen: ' + (err && (err.description || err.code) || err);
+          });
+        } else {
+          userRequestedCast = true;
+          ctx.requestSession();
+        }
+      });
+    };
+
+    const s = document.createElement('script');
+    s.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
+    s.async = true;
+    document.head.appendChild(s);
+  })();
 }

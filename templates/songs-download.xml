@@ -25,4 +25,5 @@
   <Config Name="PGID" Target="PGID" Default="100" Description="Group ID to run the container as." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="TZ" Target="TZ" Default="Europe/Berlin" Description="Timezone." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="StreamCacheTTL" Target="STREAM_CACHE_TTL_MIN" Default="60" Description="Minutes to keep streamed preview audio in /tmp." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="CastBaseUrl" Target="CAST_BASE_URL" Default="" Description="Optional base URL the Chromecast uses to reach the audio streams. Leave empty when the Cast receiver is on the same host." Type="Variable" Display="advanced" Required="false" Mask="false"/>
 </Container>

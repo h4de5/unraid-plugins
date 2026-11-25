@@ -13,6 +13,10 @@ const INDEX_FILE = path.join(TMP_DIR, 'songs-download', 'local-index.json');
 const TTL = parseInt(process.env.STREAM_CACHE_TTL_MIN || '60', 10);
 const JS_RUNTIME = process.env.JS_RUNTIME || 'node';
 const FFMPEG_LOCATION = process.env.FFMPEG_LOCATION || '/usr/bin';
+// Base URL the Chromecast (a separate LAN client, not the browser) uses to
+// fetch audio. Leave empty to make the frontend fall back to the browser
+// origin.
+const CAST_BASE_URL = (process.env.CAST_BASE_URL || '').trim().replace(/\/+$/, '');
 // Map yt-dlp failures to a short, human-readable reason so the UI does not
 // just show a raw tool tail.
 function downloadError(text) {
@@ -156,7 +160,7 @@ app.get('/search.php', async (req, res) => {
       unique.push(r);
       if (unique.length >= 24) break;
     }
-    res.json({ local, youtube: unique });
+    res.json({ local: local.map((x) => Object.assign({}, x, { contentType: contentType(x.ext) })), youtube: unique });
   } catch (e) {
     res.status(502).json({ error: String(e && e.message || e) });
   }
@@ -173,8 +177,11 @@ app.get('/preview.php', async (req, res) => {
   ]);
   const lines = stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   if (code !== 0 || lines.length < 4) { res.status(502).json({ error: 'yt-dlp failed', rc: code }); return; }
+  const cached = findCached(id, TMP_DIR);
+  const ct = (cached && path.extname(cached)) ? contentType(path.extname(cached).slice(1)) : 'audio/mp4';
   res.json({
     id, title: lines[0], artist: lines[1], duration: lines[2], thumbnail: lines[3],
+    contentType: ct,
     stream_url: 'stream.php?id=' + encodeURIComponent(id),
   });
 });
@@ -269,6 +276,116 @@ app.get('/localstream.php', (req, res) => {
   }
 });
 
+// ---- Chromecast local streaming -----------------------------------------
+// The Stock Receiver on the target box does not reliably decode Opus-in-OGG
+// (the bulk of the local library). MP3 and AAC-in-MP4/M4A decode everywhere,
+// so those are served as-is and everything else is transcoded to MP3 192k
+// once and cached under /tmp/songs-download/cast/<token>.mp3.
+const CAST_DIR = path.join(TMP_DIR, 'songs-download', 'cast');
+const CAST_SAFE_EXT = new Set(['mp3', 'm4a', 'm4b']);
+const castInFlight = new Map(); // token -> Promise<string>
+
+function runFfmpeg(args) {
+  return new Promise((resolve) => {
+    let err = '';
+    const proc = spawn(path.join(FFMPEG_LOCATION, 'ffmpeg'), args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    proc.stdout.on('data', () => {});
+    proc.stderr.on('data', (d) => { err += d; });
+    proc.on('close', (code) => resolve({ code, err }));
+    proc.on('error', (e) => resolve({ code: 1, err: err + ' ' + e.message }));
+  });
+}
+
+function castFingerprint(p) {
+  const st = fs.statSync(p);
+  return p + '|' + st.size + '|' + Math.round(st.mtimeMs);
+}
+
+// Resolve the file to stream for Cast: the original if already a safe format,
+// otherwise a cached MP3 (transcoding on first use).
+async function ensureCastMp3(entry) {
+  if (CAST_SAFE_EXT.has(entry.ext)) return entry.path;
+  const token = entry.id;
+  const target = path.join(CAST_DIR, token + '.mp3');
+  const metaFile = path.join(CAST_DIR, token + '.meta');
+  try {
+    if (fs.existsSync(target) && fs.existsSync(metaFile) && fs.readFileSync(metaFile, 'utf8') === castFingerprint(entry.path)) {
+      return target;
+    }
+  } catch (e) {}
+  if (castInFlight.has(token)) return castInFlight.get(token);
+  const job = (async () => {
+    try { fs.mkdirSync(CAST_DIR, { recursive: true }); } catch (e) {}
+    const tmp = target + '.tmp.' + process.pid + '.' + Date.now();
+    const r = await runFfmpeg([
+      '-hide_banner', '-loglevel', 'error', '-y',
+      '-i', entry.path,
+      '-vn', '-map', '0:a:0', '-f', 'mp3', '-acodec', 'libmp3lame', '-b:a', '192k',
+      tmp,
+    ]);
+    if (r.code !== 0 || !fs.existsSync(tmp)) {
+      console.error('cast transcode failed (rc=' + r.code + '):', (r.err || '').slice(-500));
+      try { fs.unlinkSync(tmp); } catch (e) {}
+      throw new Error('transcode failed');
+    }
+    fs.renameSync(tmp, target);
+    try { fs.writeFileSync(metaFile, castFingerprint(entry.path)); } catch (e) {}
+    return target;
+  })();
+  castInFlight.set(token, job);
+  try { return await job; } finally { castInFlight.delete(token); }
+}
+
+// Serve an audio file with full HTTP Range/206 support (same behaviour as the
+// stream.php / localstream.php endpoints).
+function serveAudio(res, req, file, ct) {
+  const total = fs.statSync(file).size;
+  const range = req.headers.range;
+  res.setHeader('Content-Type', ct);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Accept-Ranges', 'bytes');
+  if (range) {
+    const m = range.match(/bytes=(\d*)-(\d*)/);
+    let start, end;
+    if (m && m[1] === '' && m[2] !== '') {
+      const suffix = parseInt(m[2], 10);
+      start = Math.max(0, total - suffix);
+      end = total - 1;
+    } else {
+      start = (m && m[1] !== '') ? parseInt(m[1], 10) : 0;
+      end = (m && m[2] !== '') ? parseInt(m[2], 10) : total - 1;
+    }
+    if (isNaN(start) || isNaN(end) || start >= total || end >= total || start > end || start < 0) {
+      res.status(416).setHeader('Content-Range', 'bytes */' + total).end();
+      return;
+    }
+    res.status(206);
+    res.setHeader('Content-Range', 'bytes ' + start + '-' + end + '/' + total);
+    res.setHeader('Content-Length', end - start + 1);
+    fs.createReadStream(file, { start, end }).pipe(res);
+  } else {
+    res.setHeader('Content-Length', total);
+    fs.createReadStream(file).pipe(res);
+  }
+}
+
+app.get('/caststream.php', async (req, res) => {
+  const id = String(req.query.id || '');
+  if (!/^[0-9a-f]{16}$/.test(id)) { res.status(400).end(); return; }
+  const entry = localIndex.resolveLocal(id);
+  if (!entry || !fs.existsSync(entry.path)) { res.status(404).end(); return; }
+  let file;
+  try {
+    file = await ensureCastMp3(entry);
+  } catch (e) {
+    console.error('caststream failed:', e && e.message);
+    res.status(500).end();
+    return;
+  }
+  const ct = CAST_SAFE_EXT.has(entry.ext) ? (contentType(entry.ext) || 'audio/mpeg') : 'audio/mpeg';
+  serveAudio(res, req, file, ct);
+});
+
 // Serve the extracted JPEG cover for a local file by index token. Extracted
 // once per file (ffmpeg first frame) and then served from the container-local
 // cover dir. Files without an embedded cover stream return 404.
@@ -343,6 +460,13 @@ app.get('/version', (req, res) => {
   execFile('/usr/local/bin/yt-dlp', ['--version'], (e, out) => {
     res.json({ yt_dlp: (out || '').trim(), node: process.version, uid: process.getuid(), gid: process.getgid() });
   });
+});
+
+// Base URL for the Chromecast receiver to stream from. Empty means the
+// frontend falls back to the browser origin (same-origin audio URL).
+app.get('/castconfig', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ base: CAST_BASE_URL });
 });
 
 localIndex.init(DOWNLOAD_DIR, INDEX_FILE,

@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check lib/youtube.js && node --check lib/stream-cache.js"
+    "check": "node --check server.js && node --check lib/youtube.js && node --check lib/stream-cache.js && node --check lib/local-index.js"
   },
   "dependencies": {
     "express": "^4.21.0"

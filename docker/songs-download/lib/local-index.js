@@ -177,7 +177,7 @@ function searchLocal(query) {
     const e = files[p];
     const words = wordsOf(e);
     if (tokens.every((t) => words.has(t))) {
-      out.push({ id: e.id, name: e.name, artist: e.artist, title: e.title, local: true, already: true });
+      out.push({ id: e.id, name: e.name, artist: e.artist, title: e.title, ext: e.ext, local: true, already: true });
     }
   }
   out.sort((a, b) => a.name.localeCompare(b.name));

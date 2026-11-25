@@ -23,7 +23,8 @@ ENV PORT=8765 \
     PUID=99 \
     PGID=100 \
     TZ=Europe/Berlin \
-    STREAM_CACHE_TTL_MIN=60
+    STREAM_CACHE_TTL_MIN=60 \
+    CAST_BASE_URL=
 
 EXPOSE 8765
 VOLUME ["/downloads"]
