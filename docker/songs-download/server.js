@@ -31,6 +31,16 @@ function downloadError(text) {
 }
 
 const app = express();
+// Allow the Chromecast receiver (a different origin) to fetch audio streams,
+// including byte-range requests, without CORS failures.
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  next();
+});
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 

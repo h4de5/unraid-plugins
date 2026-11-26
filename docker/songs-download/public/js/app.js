@@ -371,6 +371,7 @@ const castTimeDur = document.getElementById('castTimeDur');
 const castVolume = document.getElementById('castVolume');
 const MEDIA_NS = 'urn:x-cast:com.google.cast.media';
 let castCtx = null;
+let castMedia = null;   // current Media object on the receiver (for play/pause/seek/volume)
 let userRequestedCast = false;
 let castStatus = null;    // last media status message from the receiver
 let castSeeking = false;  // user is dragging the seek bar
@@ -407,16 +408,13 @@ function loadOnCast(track, startSec) {
     contentId = castBase + '/' + track.path;
     ct = track.contentType || 'audio/mp4';
   }
-  const media = new chrome.cast.media.MediaInfo({
-    contentId: contentId,
-    contentType: ct,
-    streamType: chrome.cast.media.StreamType.BUFFERED,
-    metadata: new chrome.cast.media.GenericMediaMetadata({
-      title: track.title || '',
-      artist: track.artist || '',
-      albumName: track.album || '',
-    }),
-  });
+  const media = new chrome.cast.media.MediaInfo(contentId, ct);
+  media.streamType = chrome.cast.media.StreamType.BUFFERED;
+  const meta = new chrome.cast.media.GenericMediaMetadata();
+  meta.title = track.title || '';
+  meta.artist = track.artist || '';
+  meta.albumName = track.album || '';
+  media.metadata = meta;
   const req = new chrome.cast.media.LoadRequest(media);
   if (startSec > 0) { req.currentTime = startSec; }
   req.autoplay = true;
@@ -425,21 +423,63 @@ function loadOnCast(track, startSec) {
   castStatus = null;
   setPlayPauseIcon(true);
   const p = session.loadMedia(req);
-  if (p && typeof p.catch === 'function') p.catch((err) => {
-    nowPlaying.textContent = 'Cast-Fehler: ' + (err && (err.description || err.code) || err);
-  });
+  if (p && typeof p.then === 'function') {
+    p.then((m) => { castMedia = m || null; }).catch((err) => {
+      nowPlaying.textContent = 'Cast-Fehler: ' + (err && (err.description || err.code) || err);
+    });
+  } else if (p && typeof p.catch === 'function') {
+    p.catch((err) => {
+      nowPlaying.textContent = 'Cast-Fehler: ' + (err && (err.description || err.code) || err);
+    });
+  }
 }
 
-// Send a raw media-namespace command to the receiver (play/pause/seek/...),
-// reusing the session id from the last status message.
+// Send a media command to the receiver. Prefer the high-level Media object
+// methods (they build the correctly-typed protocol messages internally);
+// fall back to a raw MEDIA_NS message only if no Media object is available.
 function mediaCmd(command, extra) {
-  const session = castCtx && castCtx.getCurrentSession();
+  if (!castCtx) return;
+  const session = castCtx.getCurrentSession();
   if (!session) return;
-  const msg = Object.assign({ command: command, mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0 }, extra || {});
-  const p = session.sendMessage(MEDIA_NS, msg);
-  if (p && typeof p.catch === 'function') {
-    p.catch((err) => { console.warn('cast ' + command + ' failed:', err && (err.code || err)); });
-  }
+  const media = (session.getMediaSession && session.getMediaSession()) || castMedia;
+  const ok = () => {};
+  const fail = (e) => { console.warn('cast ' + command + ' failed:', e && (e.code || e)); };
+  try {
+    if (command === 'PLAY') {
+      if (media && typeof media.play === 'function') media.play(null, ok, fail);
+      else session.sendMessage(MEDIA_NS, { type: 'PLAY', mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0, requestId: Date.now() }).catch(fail);
+    } else if (command === 'PAUSE') {
+      if (media && typeof media.pause === 'function') media.pause(null, ok, fail);
+      else session.sendMessage(MEDIA_NS, { type: 'PAUSE', mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0, requestId: Date.now() }).catch(fail);
+    } else if (command === 'STOP') {
+      if (media && typeof media.stop === 'function') media.stop(null, ok, fail);
+      else session.sendMessage(MEDIA_NS, { type: 'STOP', mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0, requestId: Date.now() }).catch(fail);
+    } else if (command === 'SEEK') {
+      const ct = (extra && typeof extra.currentTime === 'number') ? extra.currentTime : 0;
+      if (media && typeof media.seek === 'function') {
+        const sr = new chrome.cast.media.SeekRequest();
+        sr.currentTime = ct;
+        media.seek(sr, ok, fail);
+      } else {
+        session.sendMessage(MEDIA_NS, { type: 'SEEK', mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0, currentTime: ct, requestId: Date.now() }).catch(fail);
+      }
+    } else if (command === 'VOLUME') {
+      const level = (extra && extra.volume && typeof extra.volume.level === 'number') ? extra.volume.level : ((extra && typeof extra.level === 'number') ? extra.level : 0);
+      const muted = (extra && extra.volume && typeof extra.volume.muted === 'boolean') ? extra.volume.muted : (level === 0);
+      if (media && typeof media.setVolume === 'function') {
+        const vol = new chrome.cast.Volume(level, muted);
+        if (typeof chrome.cast.media.VolumeRequest === 'function') {
+          media.setVolume(new chrome.cast.media.VolumeRequest(vol), ok, fail);
+        } else {
+          media.setVolume(vol, ok, fail);
+        }
+      } else if (session && typeof session.setVolume === 'function') {
+        Promise.resolve(session.setVolume(level)).catch(fail);
+      } else {
+        session.sendMessage(MEDIA_NS, { type: 'SET_VOLUME', mediaSessionId: (castStatus && castStatus.mediaSessionId) || 0, volume: { level: level, muted: muted }, requestId: Date.now() }).catch(fail);
+      }
+    }
+  } catch (e) { console.warn('mediaCmd ' + command + ' failed:', e); }
 }
 
 // Drive the control bar from a receiver status message.
@@ -529,6 +569,7 @@ if (window.isSecureContext && castBtn) {
         } else {
           // Leaving cast mode (button tap or receiver drop): back to the phone,
           // resuming where the receiver left off.
+          castMedia = null;
           if (currentTrack) {
             let pos = lastCastPos;
             if (!pos && castStatus) { try { pos = castStatus.currentTime || 0; } catch (e) {} }
@@ -542,9 +583,12 @@ if (window.isSecureContext && castBtn) {
       // again unless the user just asked for a new session, so the receiver
       // does not silently replay and the button reflects reality.
       if (['CONNECTED', 'CONNECTING'].indexOf(ctx.getCastState()) !== -1 && !userRequestedCast) {
-        Promise.resolve(ctx.endSession(true)).catch((err) => {
-          nowPlaying.textContent = 'Cast trennen fehlgeschlagen: ' + (err && (err.description || err.code) || err);
-        });
+        const session = ctx.getCurrentSession();
+        if (session) {
+          Promise.resolve(session.endSession(true)).catch((err) => {
+            nowPlaying.textContent = 'Cast trennen fehlgeschlagen: ' + (err && (err.description || err.code) || err);
+          });
+        }
       }
       castBtn.hidden = false;
       castBtn.addEventListener('click', () => {
@@ -552,9 +596,12 @@ if (window.isSecureContext && castBtn) {
           // Remember where the receiver was so the phone can resume there.
           if (castStatus) { try { lastCastPos = castStatus.currentTime || 0; } catch (e) {} }
           userRequestedCast = false;
-          Promise.resolve(ctx.endSession(true)).catch((err) => {
-            nowPlaying.textContent = 'Cast trennen fehlgeschlagen: ' + (err && (err.description || err.code) || err);
-          });
+          const session = ctx.getCurrentSession();
+          if (session) {
+            Promise.resolve(session.endSession(true)).catch((err) => {
+              nowPlaying.textContent = 'Cast trennen fehlgeschlagen: ' + (err && (err.description || err.code) || err);
+            });
+          }
         } else {
           userRequestedCast = true;
           ctx.requestSession();
