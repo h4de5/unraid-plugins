@@ -302,6 +302,114 @@ function resumeLocalAt(pos) {
   playLocalOnly(currentTrack, pos || 0);
 }
 
+function trackKey(t) { return t ? (t.localId ? 'L:' + t.localId : (t.path || '')) : ''; }
+function sameTrack(a, b) { return !!a && !!b && trackKey(a) === trackKey(b); }
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function playAt(i) {
+  if (i < 0 || i >= queue.length) return;
+  currentIdx = i;
+  currentTrack = queue[i];
+  startPlay(queue[i], 0);
+  renderQueue();
+}
+
+function enqueue(track) {
+  if (queue.length === 0) {
+    queue.push(track);
+    playAt(0);
+  } else {
+    queue.push(track);
+    renderQueue();
+  }
+}
+
+function bringToFrontAndPlay(track) {
+  const idx = queue.findIndex((t) => sameTrack(t, track));
+  if (idx !== -1) queue.splice(idx, 1);
+  queue.unshift(track);
+  playAt(0);
+}
+
+function onTrackClick(track) {
+  const idx = queue.findIndex((t) => sameTrack(t, track));
+  if (idx !== -1) {
+    bringToFrontAndPlay(track);
+  } else {
+    enqueue(track);
+  }
+}
+
+function stopPlayback() {
+  player.pause();
+  try { player.src = ''; } catch (e) {}
+  if (castConnected()) { mediaCmd('STOP'); }
+  currentTrack = null;
+  currentIdx = -1;
+  queue = [];
+  nowPlaying.textContent = '';
+  playerBar.hidden = true;
+  renderQueue();
+}
+
+function advance() {
+  if (advancing) return;
+  if (queue.length === 0) { stopPlayback(); return; }
+  advancing = true;
+  try {
+    if (repeat) {
+      currentIdx = (currentIdx + 1) % queue.length;
+      playAt(currentIdx);
+    } else {
+      queue.splice(currentIdx, 1);
+      if (queue.length === 0) { stopPlayback(); currentIdx = -1; currentTrack = null; return; }
+      if (currentIdx >= queue.length) currentIdx = queue.length - 1;
+      playAt(currentIdx);
+    }
+  } finally {
+    advancing = false;
+  }
+  renderQueue();
+}
+
+function clearQueue() {
+  queue = [];
+  currentIdx = -1;
+  currentTrack = null;
+  player.pause();
+  try { player.src = ''; } catch (e) {}
+  if (castConnected()) { mediaCmd('STOP'); }
+  nowPlaying.textContent = '';
+  playerBar.hidden = true;
+  renderQueue();
+}
+
+function toggleRepeat() {
+  repeat = !repeat;
+  const btn = document.getElementById('repeatBtn');
+  if (btn) btn.classList.toggle('active', repeat);
+  renderQueue();
+}
+
+function renderQueue() {
+  const count = document.getElementById('queueCount');
+  if (count) count.textContent = queue.length ? (queue.length + ' in Queue') : '';
+  const list = document.getElementById('queueList');
+  if (!list) return;
+  if (queue.length <= 1) { list.hidden = true; list.innerHTML = ''; return; }
+  list.innerHTML = queue.map((t, i) => {
+    const isCur = (i === currentIdx);
+    return '<div class="qitem' + (isCur ? ' cur' : '') + '" data-idx="' + i + '">' + (isCur ? '\u25B6 ' : '') + escapeHtml(trackLabel(t)) + '</div>';
+  }).join('');
+  list.hidden = false;
+  list.querySelectorAll('.qitem').forEach((el) => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.getAttribute('data-idx'), 10);
+      if (!isNaN(i) && queue[i]) bringToFrontAndPlay(queue[i]);
+    });
+  });
+}
+
 async function play(id) {
   nowPlaying.textContent = 'Lade Vorschau...';
   showPlayerBar();
@@ -309,13 +417,13 @@ async function play(id) {
     const res = await fetch('/preview.php?id=' + encodeURIComponent(id));
     const data = await res.json();
     if (data.error) { nowPlaying.textContent = data.error; return; }
-    startPlay({
+    onTrackClick({
       path: 'stream.php?id=' + encodeURIComponent(id),
       contentType: data.contentType || 'audio/mp4',
       title: data.title,
       artist: data.artist || '',
       album: 'Songs Download',
-    }, 0);
+    });
   } catch (err) {
     nowPlaying.textContent = 'Fehler: ' + err;
   }
@@ -325,14 +433,15 @@ function playLocal(id, name, contentType) {
   const parts = (name || '').split(' - ');
   const artist = parts.length > 1 ? parts[0].trim() : '';
   const title = parts.length > 1 ? parts.slice(1).join(' - ').trim() : (name || 'Lokale Datei');
-  startPlay({
+  showPlayerBar();
+  onTrackClick({
     path: 'localstream.php?id=' + encodeURIComponent(id),
     contentType: contentType || 'audio/mp4',
     localId: id,
     title,
     artist,
     album: 'Lokale Musik',
-  }, 0);
+  });
 }
 
 async function download(id, btn) {
@@ -372,6 +481,10 @@ const castVolume = document.getElementById('castVolume');
 const MEDIA_NS = 'urn:x-cast:com.google.cast.media';
 let castCtx = null;
 let castMedia = null;   // current Media object on the receiver (for play/pause/seek/volume)
+let queue = [];         // ordered list of tracks (current + upcoming)
+let currentIdx = -1;    // index of the currently playing track in `queue` (-1 = none)
+let repeat = false;     // repeat playlist instead of removing played tracks
+let advancing = false;   // guard against re-entrant advance()
 let userRequestedCast = false;
 let castStatus = null;    // last media status message from the receiver
 let castSeeking = false;  // user is dragging the seek bar
@@ -503,6 +616,10 @@ function applyCastStatus(status) {
     if (idle && idle !== 'FINISHED' && idle !== 'CANCELED') {
       nowPlaying.textContent = 'Cast-Fehler: ' + idle;
     }
+    if (idle === 'FINISHED' && castConnected() && currentIdx !== -1) {
+      // track ended on the receiver -> advance the queue
+      advance();
+    }
   }
 }
 
@@ -615,3 +732,20 @@ if (window.isSecureContext && castBtn) {
     document.head.appendChild(s);
   })();
 }
+
+// ---- Queue controls (always available) -----------------------------
+const nextBtn = document.getElementById('nextBtn');
+const repeatBtn = document.getElementById('repeatBtn');
+const clearQueueBtn = document.getElementById('clearQueueBtn');
+if (nextBtn) nextBtn.addEventListener('click', () => { if (queue.length) advance(); });
+if (repeatBtn) repeatBtn.addEventListener('click', toggleRepeat);
+if (clearQueueBtn) clearQueueBtn.addEventListener('click', clearQueue);
+
+// Auto-advance when local playback ends.
+player.addEventListener('ended', () => {
+  if (castConnected()) return;
+  if (currentIdx !== -1) advance();
+});
+
+// Reflect initial repeat state on the button.
+if (repeatBtn) repeatBtn.classList.toggle('active', repeat);

@@ -6,7 +6,7 @@
 <title>Songs Download</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#111111">
-  <link rel="stylesheet" href="/css/style.css?v=15">
+  <link rel="stylesheet" href="/css/style.css?v=16">
 </head>
 <body>
 <header>
@@ -28,6 +28,12 @@
 </main>
 <div id="playerBar">
   <div id="nowPlaying"></div>
+  <div id="queueControls">
+    <button id="nextBtn" type="button" class="iconBtn" aria-label="Nächstes Lied" title="Nächstes Lied"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zm8.5-6v6h2V6h-2v6z"/></svg></button>
+    <button id="repeatBtn" type="button" class="iconBtn" aria-label="Wiederholen" title="Wiederholen"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg></button>
+    <button id="clearQueueBtn" type="button" class="iconBtn" aria-label="Warteschlange leeren" title="Warteschlange leeren"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+    <span id="queueCount"></span>
+  </div>
   <div id="castControls" hidden>
     <button id="castPlayPause" type="button" class="iconBtn" aria-label="Play/Pause" title="Play/Pause"></button>
     <button id="castStop" type="button" class="iconBtn" aria-label="Stopp" title="Stopp"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 6h12v12H6z"/></svg></button>
@@ -41,7 +47,8 @@
     </div>
   </div>
   <audio id="player" controls hidden></audio>
+  <div id="queueList" hidden></div>
 </div>
-  <script src="/js/app.js?v=18"></script>
+  <script src="/js/app.js?v=19"></script>
 </body>
 </html>
